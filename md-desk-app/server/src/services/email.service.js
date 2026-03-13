@@ -1,0 +1,65 @@
+const nodemailer = require('nodemailer');
+const config = require('../config');
+
+let transporter = null;
+
+function getTransporter() {
+  if (!config.mail?.from || !config.mail?.password) return null;
+  if (transporter) return transporter;
+  transporter = nodemailer.createTransport({
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
+    auth: {
+      user: config.mail.from,
+      pass: String(config.mail.password).trim(),
+    },
+  });
+  return transporter;
+}
+
+async function sendMail({ to, subject, text, html }) {
+  const trans = getTransporter();
+  if (!trans) return;
+  try {
+    await trans.sendMail({
+      from: config.mail.from,
+      to,
+      subject,
+      text: text || undefined,
+      html: html || undefined,
+    });
+  } catch (err) {
+    console.error('Email send failed:', err.message);
+  }
+}
+
+async function sendAcknowledgmentEmail(toEmail, userName, complaintId) {
+  await sendMail({
+    to: toEmail,
+    subject: `Complaint received - ${complaintId}`,
+    text: `Dear ${userName || 'Customer'},\n\nThank you for submitting your complaint. Your complaint ID is: ${complaintId}.\n\nYou can track the status anytime using this ID.\n\nBest regards,\nMD Desk - Techno Paints`,
+    html: `<p>Dear ${userName || 'Customer'},</p><p>Thank you for submitting your complaint. Your complaint ID is: <strong>${complaintId}</strong>.</p><p>You can track the status anytime using this ID.</p><p>Best regards,<br/>MD Desk - Techno Paints</p>`,
+  });
+}
+
+async function sendStatusUpdateEmail(toEmail, userName, complaintId, newStatus) {
+  const statusLabel = newStatus.replace(/_/g, ' ');
+  await sendMail({
+    to: toEmail,
+    subject: `Complaint ${complaintId} - Status updated to ${statusLabel}`,
+    text: `Dear ${userName || 'Customer'},\n\nYour complaint ${complaintId} has been updated to: ${statusLabel}.\n\nBest regards,\nMD Desk - Techno Paints`,
+    html: `<p>Dear ${userName || 'Customer'},</p><p>Your complaint <strong>${complaintId}</strong> has been updated to: <strong>${statusLabel}</strong>.</p><p>Best regards,<br/>MD Desk - Techno Paints</p>`,
+  });
+}
+
+async function sendOtpEmail(toEmail, otp) {
+  await sendMail({
+    to: toEmail,
+    subject: 'Your MD Desk verification code',
+    text: `Your verification code is: ${otp}\n\nIt expires in 10 minutes. Do not share this code.\n\nMD Desk - Techno Paints`,
+    html: `<p>Your verification code is: <strong>${otp}</strong></p><p>It expires in 10 minutes. Do not share this code.</p><p>MD Desk - Techno Paints</p>`,
+  });
+}
+
+module.exports = { sendMail, sendAcknowledgmentEmail, sendStatusUpdateEmail, sendOtpEmail };

@@ -1,0 +1,144 @@
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Box,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  TextField,
+  Typography,
+  Chip,
+  Skeleton,
+} from '@mui/material';
+import ReplyIcon from '@mui/icons-material/Reply';
+import EmailIcon from '@mui/icons-material/Email';
+import { messagesApi } from '../api/endpoints';
+
+export default function MessagesPage() {
+  const [page, setPage] = useState(0);
+  const [limit, setLimit] = useState(10);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const queryClient = useQueryClient();
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-messages', page, limit],
+    queryFn: async () => (await messagesApi.list({ page: page + 1, limit })).data,
+  });
+
+  const { data: detail } = useQuery({
+    queryKey: ['message', selectedId],
+    queryFn: async () => (await messagesApi.getById(selectedId!)).data,
+    enabled: !!selectedId,
+  });
+
+  const replyMutation = useMutation({
+    mutationFn: () => messagesApi.reply(selectedId!, replyText),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-messages'] });
+      queryClient.invalidateQueries({ queryKey: ['message', selectedId] });
+      setReplyText('');
+      setSelectedId(null);
+    },
+  });
+
+  const items = (data?.items || []) as Array<{
+    id: string;
+    subject: string;
+    message: string;
+    createdAt: string;
+    user?: { name: string; email: string };
+  }>;
+  const msg = detail?.message as { id: string; subject: string; message: string; adminReply?: string; user?: { name: string; email: string } } | undefined;
+
+  return (
+    <Box>
+      <Typography variant="h4" fontWeight={700} gutterBottom>Customer Messages</Typography>
+      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>View and reply to customer suggestions and feedback</Typography>
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow sx={{ bgcolor: 'grey.50' }}>
+              <TableCell sx={{ fontWeight: 600 }}>From</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Subject</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Replied</TableCell>
+              <TableCell sx={{ fontWeight: 600 }} align="right">Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {isLoading
+              ? Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}><TableCell colSpan={5}><Skeleton height={48} /></TableCell></TableRow>
+                ))
+              : items.map((row) => (
+                  <TableRow key={row.id} hover>
+                    <TableCell>
+                      <Typography variant="body2" fontWeight={500}>{row.user?.name || '—'}</Typography>
+                      <Typography variant="caption" color="text.secondary">{row.user?.email}</Typography>
+                    </TableCell>
+                    <TableCell>{row.subject}</TableCell>
+                    <TableCell>{new Date(row.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell>{(row as { adminReply?: string }).adminReply ? <Chip label="Replied" color="success" size="small" /> : <Chip label="Pending" size="small" />}</TableCell>
+                    <TableCell align="right">
+                      <Button size="small" startIcon={<ReplyIcon />} variant="outlined" onClick={() => setSelectedId(row.id)}>View / Reply</Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+          </TableBody>
+        </Table>
+        <TablePagination
+          rowsPerPageOptions={[5, 10, 25]}
+          component="div"
+          count={data?.total ?? 0}
+          rowsPerPage={limit}
+          page={page}
+          onPageChange={(_, p) => setPage(p)}
+          onRowsPerPageChange={(e) => {
+            setLimit(Number(e.target.value));
+            setPage(0);
+          }}
+        />
+      </TableContainer>
+      <Dialog open={!!selectedId} onClose={() => setSelectedId(null)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
+        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><EmailIcon color="primary" /> {msg?.subject}</DialogTitle>
+        <DialogContent>
+          {msg ? (
+            <Box>
+              <Typography variant="body2" color="text.secondary" gutterBottom>From: {msg.user?.name} ({msg.user?.email})</Typography>
+              <Paper variant="outlined" sx={{ p: 2, my: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+                <Typography variant="body1">{msg.message}</Typography>
+              </Paper>
+              {msg.adminReply && (
+                <Paper sx={{ p: 2, mb: 2, bgcolor: 'primary.50', borderRadius: 2, border: '1px solid', borderColor: 'primary.200' }}>
+                  <Typography variant="subtitle2" color="primary.main" gutterBottom>Your reply</Typography>
+                  <Typography variant="body1">{msg.adminReply}</Typography>
+                  {(msg as { repliedAt?: string }).repliedAt && <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>{new Date((msg as { repliedAt: string }).repliedAt).toLocaleString()}</Typography>}
+                </Paper>
+              )}
+              {!msg.adminReply && (
+                <Box sx={{ mt: 2 }}>
+                  <TextField fullWidth multiline rows={4} label="Your reply" value={replyText} onChange={(e) => setReplyText(e.target.value)} placeholder="Type your reply…" sx={{ mb: 2 }} />
+                  <Button variant="contained" startIcon={<ReplyIcon />} disabled={!replyText.trim() || replyMutation.isPending} onClick={() => replyMutation.mutate()}>
+                    {replyMutation.isPending ? 'Sending…' : 'Send Reply'}
+                  </Button>
+                </Box>
+              )}
+            </Box>
+          ) : (
+            <Skeleton variant="rectangular" height={180} />
+          )}
+        </DialogContent>
+      </Dialog>
+    </Box>
+  );
+}

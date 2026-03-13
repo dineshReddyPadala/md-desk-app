@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String   @unique
+  password  String
+  role      Role     @default(CUSTOMER)
+  city      String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  complaints    Complaint[]
+  messages      Message[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String    @map("user_id")
+  type      String
+  title     String
+  body      String?
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([readAt])
+  @@map("notifications")
+}
+
+enum Role {
+  ADMIN
+  CUSTOMER
+}
+
+model Complaint {
+  id             String         @id @default(cuid())
+  complaintId    String         @unique @map("complaint_id")
+  userId         String         @map("user_id")
+  productUsed    String         @map("product_used")
+  projectLocation String        @map("project_location")
+  description    String
+  priority       Priority       @default(MEDIUM)
+  status         ComplaintStatus @default(RECEIVED)
+  name           String?
+  phone          String?
+  city           String?
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  media           ComplaintMedia[]
+  adminResponses  AdminResponse[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([priority])
+  @@index([createdAt])
+  @@map("complaints")
+}
+
+enum Priority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum ComplaintStatus {
+  RECEIVED
+  UNDER_REVIEW
+  IN_PROGRESS
+  RESOLVED
+}
+
+model ComplaintMedia {
+  id          String   @id @default(cuid())
+  complaintId String   @map("complaint_id")
+  fileUrl     String   @map("file_url")
+  fileType    String   @map("file_type")
+
+  complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+
+  @@index([complaintId])
+  @@map("complaint_media")
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  subject     String
+  message     String
+  adminReply  String?  @map("admin_reply")
+  repliedAt   DateTime? @map("replied_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("messages")
+}
+
+model Product {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  imageUrl    String? @map("image_url")
+
+  @@map("products")
+}
+
+model Dealer {
+  id           String  @id @default(cuid())
+  name         String
+  city         String?
+  phone        String?
+  imageUrl     String?  @map("image_url")
+  locationLat  Float?   @map("location_lat")
+  locationLong Float?   @map("location_long")
+
+  @@map("dealers")
+}
+
+model AdminResponse {
+  id          String   @id @default(cuid())
+  complaintId String   @map("complaint_id")
+  message     String
+  createdBy   String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  complaint Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+
+  @@index([complaintId])
+  @@map("admin_responses")
+}
