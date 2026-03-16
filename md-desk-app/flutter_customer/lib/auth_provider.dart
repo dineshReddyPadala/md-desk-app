@@ -13,7 +13,28 @@ class AuthProvider extends ChangeNotifier {
   Future<void> _loadToken() async {
     final prefs = await SharedPreferences.getInstance();
     token = prefs.getString(_keyToken);
+    if (token != null && token!.isNotEmpty) {
+      _fetchUser();
+    } else {
+      notifyListeners();
+    }
+  }
+
+  Future<void> _fetchUser() async {
+    try {
+      final client = ApiClient(baseUrl: _baseUrl, token: token);
+      final res = await client.get('/auth/me');
+      user = res['user'] as Map<String, dynamic>?;
+    } catch (_) {
+      user = null;
+    }
     notifyListeners();
+  }
+
+  /// Refresh user from server (e.g. for profile). Call when token exists.
+  Future<void> loadUser() async {
+    if (token == null || token!.isEmpty) return;
+    await _fetchUser();
   }
 
   Future<void> _saveToken(String t) async {

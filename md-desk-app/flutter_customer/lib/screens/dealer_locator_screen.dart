@@ -36,6 +36,12 @@ class _DealerLocatorScreenState extends State<DealerLocatorScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final list = _dealers ?? [];
@@ -75,10 +81,8 @@ class _DealerLocatorScreenState extends State<DealerLocatorScreen> {
               padding: const EdgeInsets.only(bottom: 16),
               child: Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
             ),
-          if (_dealers == null && _city.trim().isEmpty)
-            Text('Enter a city and tap Search to find dealers.', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline))
-          else if (_dealers == null)
-            const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
+          if (_dealers == null)
+            const Padding(padding: EdgeInsets.symmetric(vertical: 24), child: Center(child: CircularProgressIndicator()))
           else
             ...list.map((d) {
               final name = d['name'] as String? ?? '—';

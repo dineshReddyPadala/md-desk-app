@@ -53,30 +53,40 @@ class _ProductsScreenState extends State<ProductsScreen> {
             return name.contains(q) || desc.contains(q);
           }).toList();
 
+    final isNarrow = MediaQuery.sizeOf(context).width < 400;
+    final imageHeight = isNarrow ? 120.0 : 140.0;
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Products', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           Text('Browse our product range', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           TextField(
             decoration: const InputDecoration(
               hintText: 'Search by name or description…',
               border: OutlineInputBorder(),
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             ),
             onChanged: (v) => setState(() => _search = v),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           if (_error != null)
             Padding(
-              padding: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.only(bottom: 8),
               child: Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
             ),
           if (_products == null)
-            const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
+            const Padding(padding: EdgeInsets.symmetric(vertical: 24), child: Center(child: CircularProgressIndicator()))
+          else if (filtered.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Text('No products available.', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline)),
+            )
           else
             LayoutBuilder(
               builder: (context, constraints) {
@@ -86,9 +96,9 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: crossAxisCount,
-                    childAspectRatio: 0.85,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
+                    childAspectRatio: isNarrow ? 0.72 : 0.78,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 10,
                   ),
                   itemCount: filtered.length,
                   itemBuilder: (context, i) {
@@ -100,22 +110,24 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       clipBehavior: Clip.antiAlias,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           if (imageUrl != null && imageUrl.isNotEmpty)
-                            Image.network(imageUrl, height: 160, fit: BoxFit.cover)
+                            Image.network(imageUrl, height: imageHeight, fit: BoxFit.cover)
                           else
                             Container(
-                              height: 160,
+                              height: imageHeight,
                               color: theme.colorScheme.surfaceContainerHighest,
-                              child: Icon(Icons.image, size: 64, color: theme.colorScheme.outline),
+                              child: Icon(Icons.image, size: 40, color: theme.colorScheme.outline),
                             ),
                           Padding(
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.all(8),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(name, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600)),
-                                const SizedBox(height: 4),
+                                Text(name, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                const SizedBox(height: 2),
                                 Text(desc, style: theme.textTheme.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
                               ],
                             ),
@@ -127,8 +139,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
                 );
               },
             ),
-          if (_products != null && filtered.isEmpty)
-            Center(child: Text('No products available.', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.outline))),
         ],
       ),
     );

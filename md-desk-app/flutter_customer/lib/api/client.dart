@@ -25,6 +25,15 @@ class ApiClient {
     return _handleResponse(r);
   }
 
+  Future<Map<String, dynamic>> patch(String path, [Map<String, dynamic>? body]) async {
+    final r = await http.patch(
+      Uri.parse('$baseUrl$path'),
+      headers: _headers,
+      body: body != null ? jsonEncode(body) : null,
+    );
+    return _handleResponse(r);
+  }
+
   /// Multipart POST for complaints with photos (aligned with web).
   Future<Map<String, dynamic>> postMultipart(
     String path, {
