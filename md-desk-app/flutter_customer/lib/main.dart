@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'auth_provider.dart';
+import 'widgets/app_shell.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/dashboard_screen.dart';
@@ -28,7 +29,8 @@ class MdDeskApp extends StatelessWidget {
     return MaterialApp.router(
       title: 'MD Desk',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0097D7))
+            .copyWith(secondary: const Color(0xFFF37336)),
         useMaterial3: true,
       ),
       routerConfig: _router,
@@ -41,11 +43,22 @@ final _router = GoRouter(
   routes: [
     GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
     GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
-    GoRoute(path: '/dashboard', builder: (_, __) => const DashboardScreen()),
-    GoRoute(path: '/raise-complaint', builder: (_, __) => const RaiseComplaintScreen()),
-    GoRoute(path: '/track', builder: (_, __) => const TrackComplaintScreen()),
-    GoRoute(path: '/message-md', builder: (_, __) => const MessageMDScreen()),
-    GoRoute(path: '/products', builder: (_, __) => const ProductsScreen()),
-    GoRoute(path: '/dealers', builder: (_, __) => const DealerLocatorScreen()),
+    ShellRoute(
+      builder: (_, __, child) => AppShell(child: child),
+      routes: [
+        GoRoute(
+          path: '/',
+          redirect: (_, __) => '/dashboard',
+          routes: [
+            GoRoute(path: 'dashboard', builder: (_, __) => const DashboardScreen()),
+            GoRoute(path: 'raise-complaint', builder: (_, __) => const RaiseComplaintScreen()),
+            GoRoute(path: 'track', builder: (_, __) => const TrackComplaintScreen()),
+            GoRoute(path: 'message-md', builder: (_, __) => const MessageMDScreen()),
+            GoRoute(path: 'products', builder: (_, __) => const ProductsScreen()),
+            GoRoute(path: 'dealers', builder: (_, __) => const DealerLocatorScreen()),
+          ],
+        ),
+      ],
+    ),
   ],
 );

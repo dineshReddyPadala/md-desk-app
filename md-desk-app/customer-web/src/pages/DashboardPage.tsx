@@ -3,6 +3,8 @@ import { Box, Typography, Grid, Card, CardContent, Button } from '@mui/material'
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import MessageIcon from '@mui/icons-material/Message';
+import InventoryIcon from '@mui/icons-material/Inventory';
+import LocationOnIcon from '@mui/icons-material/LocationOn';
 
 export default function DashboardPage() {
   return (
@@ -11,17 +13,17 @@ export default function DashboardPage() {
         <Typography variant="h5" gutterBottom sx={{ mb: 0 }}>Dashboard</Typography>
       </Box>
       <Grid container spacing={3}>
-        <Grid item xs={12} sm={4}>
+        <Grid item xs={12} sm={6} md={4}>
           <Card>
             <CardContent>
               <ReportProblemIcon color="primary" sx={{ fontSize: 48 }} />
-              <Typography variant="h6" sx={{ mt: 1 }}>Raise a Complaint</Typography>
+              <Typography variant="h6" sx={{ mt: 1 }}>Raise Complaint</Typography>
               <Typography variant="body2" color="textSecondary">Submit a new complaint with photos</Typography>
               <Button component={Link} to="/raise-complaint" variant="contained" sx={{ mt: 2 }}>Raise Complaint</Button>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid item xs={12} sm={6} md={4}>
           <Card>
             <CardContent>
               <TrackChangesIcon color="primary" sx={{ fontSize: 48 }} />
@@ -31,13 +33,33 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid item xs={12} sm={6} md={4}>
           <Card>
             <CardContent>
               <MessageIcon color="primary" sx={{ fontSize: 48 }} />
               <Typography variant="h6" sx={{ mt: 1 }}>Message MD</Typography>
               <Typography variant="body2" color="textSecondary">Send suggestions or feedback</Typography>
               <Button component={Link} to="/message-md" variant="contained" sx={{ mt: 2 }}>Message</Button>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={4}>
+          <Card>
+            <CardContent>
+              <InventoryIcon color="primary" sx={{ fontSize: 48 }} />
+              <Typography variant="h6" sx={{ mt: 1 }}>Products</Typography>
+              <Typography variant="body2" color="textSecondary">Product information</Typography>
+              <Button component={Link} to="/products" variant="contained" sx={{ mt: 2 }}>Products</Button>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={4}>
+          <Card>
+            <CardContent>
+              <LocationOnIcon color="primary" sx={{ fontSize: 48 }} />
+              <Typography variant="h6" sx={{ mt: 1 }}>Dealer Locator</Typography>
+              <Typography variant="body2" color="textSecondary">Find dealers by city</Typography>
+              <Button component={Link} to="/dealers" variant="contained" sx={{ mt: 2 }}>Dealer Locator</Button>
             </CardContent>
           </Card>
         </Grid>

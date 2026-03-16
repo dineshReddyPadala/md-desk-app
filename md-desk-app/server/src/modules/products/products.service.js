@@ -6,7 +6,19 @@ async function getById(prisma, id) {
   return prisma.product.findUnique({ where: { id } });
 }
 
+async function findByName(prisma, name, excludeId = null) {
+  const where = { name: { equals: name, mode: 'insensitive' } };
+  if (excludeId) where.id = { not: excludeId };
+  return prisma.product.findFirst({ where });
+}
+
 async function create(prisma, data) {
+  const existing = await findByName(prisma, data.name);
+  if (existing) {
+    const err = new Error('A product with this name already exists.');
+    err.statusCode = 409;
+    throw err;
+  }
   return prisma.product.create({
     data: {
       name: data.name,
@@ -17,6 +29,14 @@ async function create(prisma, data) {
 }
 
 async function update(prisma, id, data) {
+  if (data.name != null) {
+    const existing = await findByName(prisma, data.name, id);
+    if (existing) {
+      const err = new Error('A product with this name already exists.');
+      err.statusCode = 409;
+      throw err;
+    }
+  }
   return prisma.product.update({
     where: { id },
     data: {
@@ -31,4 +51,4 @@ async function remove(prisma, id) {
   return prisma.product.delete({ where: { id } });
 }
 
-module.exports = { list, getById, create, update, remove };
+module.exports = { list, getById, findByName, create, update, remove };

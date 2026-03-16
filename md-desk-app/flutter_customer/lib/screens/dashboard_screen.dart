@@ -1,61 +1,47 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
-import '../auth_provider.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('MD Desk'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () async {
-              await context.read<AuthProvider>().clearToken();
-              if (context.mounted) context.go('/login');
-            },
-          ),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          _Tile(
-            title: 'Raise Complaint',
-            subtitle: 'Submit a new complaint with photos',
-            icon: Icons.report_problem,
-            onTap: () => context.go('/raise-complaint'),
-          ),
-          _Tile(
-            title: 'Track Complaint',
-            subtitle: 'Check status with your complaint ID',
-            icon: Icons.track_changes,
-            onTap: () => context.go('/track'),
-          ),
-          _Tile(
-            title: 'Message MD',
-            subtitle: 'Send suggestions or feedback',
-            icon: Icons.message,
-            onTap: () => context.go('/message-md'),
-          ),
-          _Tile(
-            title: 'Products',
-            subtitle: 'Product information',
-            icon: Icons.inventory,
-            onTap: () => context.go('/products'),
-          ),
-          _Tile(
-            title: 'Dealer Locator',
-            subtitle: 'Find dealers by city',
-            icon: Icons.location_on,
-            onTap: () => context.go('/dealers'),
-          ),
-        ],
-      ),
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text('Dashboard', style: Theme.of(context).textTheme.titleLarge),
+        const SizedBox(height: 16),
+        _Tile(
+          title: 'Raise Complaint',
+          subtitle: 'Submit a new complaint with photos',
+          icon: Icons.report_problem,
+          onTap: () => context.go('/raise-complaint'),
+        ),
+        _Tile(
+          title: 'Track Complaint',
+          subtitle: 'Check status with your complaint ID',
+          icon: Icons.track_changes,
+          onTap: () => context.go('/track'),
+        ),
+        _Tile(
+          title: 'Message MD',
+          subtitle: 'Send suggestions or feedback',
+          icon: Icons.message,
+          onTap: () => context.go('/message-md'),
+        ),
+        _Tile(
+          title: 'Products',
+          subtitle: 'Product information',
+          icon: Icons.inventory,
+          onTap: () => context.go('/products'),
+        ),
+        _Tile(
+          title: 'Dealer Locator',
+          subtitle: 'Find dealers by city',
+          icon: Icons.location_on,
+          onTap: () => context.go('/dealers'),
+        ),
+      ],
     );
   }
 }

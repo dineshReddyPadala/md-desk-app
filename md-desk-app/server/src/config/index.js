@@ -23,6 +23,8 @@ module.exports = {
       process.env.ADMIN_WEB_URL || 'http://localhost:5173',
       process.env.CUSTOMER_WEB_URL || 'http://localhost:5174',
       'http://localhost:3000',
+      'http://164.52.222.169:5173',
+      'http://164.52.222.169:5174',
     ].filter(Boolean),
   },
   logLevel: process.env.LOG_LEVEL || 'info',
