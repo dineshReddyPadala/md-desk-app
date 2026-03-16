@@ -1,5 +1,6 @@
 const messagesService = require('./messages.service');
 const notificationsService = require('../notifications/notifications.service');
+const { getIo } = require('../../socket');
 
 async function create(req, reply) {
   const { subject, message } = req.body;
@@ -13,6 +14,10 @@ async function create(req, reply) {
       title: 'New customer message',
       body: subject,
     });
+    const io = getIo();
+    if (io) {
+      io.to('admin').emit('message:new', { id: created.id, subject, message: created.message, createdAt: created.createdAt });
+    }
   } catch (err) {
     req.log?.error?.(err) || console.error('Notification notifyAdmins failed:', err);
   }
@@ -45,6 +50,23 @@ async function reply(req, reply) {
   const { id } = req.params;
   const { reply: replyText } = req.body;
   const msg = await messagesService.reply(req.server.prisma, id, replyText, req.user.id);
+  if (msg.userId) {
+    try {
+      await notificationsService.create(req.server.prisma, {
+        userId: msg.userId,
+        type: 'message_reply',
+        title: 'Reply from MD Desk',
+        body: `Re: ${msg.subject}`,
+      });
+    } catch (err) {
+      req.log?.error?.(err) || console.error('Notification create (message reply) failed:', err);
+    }
+    const io = getIo();
+    if (io) {
+      io.to(`user:${msg.userId}`).emit('message:reply', { id: msg.id, subject: msg.subject, adminReply: msg.adminReply, repliedAt: msg.repliedAt });
+      io.to(`user:${msg.userId}`).emit('notification', { type: 'message_reply', title: 'Reply from MD Desk', body: `Re: ${msg.subject}` });
+    }
+  }
   return reply.send({ success: true, message: msg });
 }
 

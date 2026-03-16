@@ -24,6 +24,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ImageIcon from '@mui/icons-material/Image';
 import { dealersApi, uploadApi, type DealerDto } from '../api/endpoints';
+import { getBackendErrorMessage } from '../api/getBackendErrorMessage';
 
 export default function DealersPage() {
   const [open, setOpen] = useState(false);
@@ -186,7 +187,9 @@ export default function DealersPage() {
               {!imageUrl && !imageFile && <Typography variant="caption" display="block" sx={{ mt: 1 }}>No image — placeholder will be shown in list</Typography>}
             </Box>
             {(createMutation.isError || updateMutation.isError) && (
-              <Alert severity="error">Operation failed</Alert>
+              <Alert severity="error">
+                {getBackendErrorMessage(createMutation.error || updateMutation.error)}
+              </Alert>
             )}
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
               <Button onClick={resetAndClose}>Cancel</Button>

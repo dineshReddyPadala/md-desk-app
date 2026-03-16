@@ -29,6 +29,7 @@ import NotificationsIcon from '@mui/icons-material/Notifications';
 import { useAuth } from '../hooks/useAuth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationsApi } from '../api/endpoints';
+import { useSocket } from '../socket/useSocket';
 
 const nav = [
   { to: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
@@ -44,8 +45,10 @@ export default function Layout() {
   const [profileAnchor, setProfileAnchor] = useState<null | HTMLElement>(null);
   const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
   const queryClient = useQueryClient();
+
+  useSocket(token);
 
   const { data: notifData } = useQuery({
     queryKey: ['notifications'],

@@ -1,6 +1,7 @@
 const complaintsService = require('./complaints.service');
 const notificationsService = require('../notifications/notifications.service');
 const emailService = require('../../services/email.service');
+const { getIo } = require('../../socket');
 
 async function createComplaint(req, reply) {
   const body = req.body || {};
@@ -18,6 +19,10 @@ async function createComplaint(req, reply) {
       title: 'Complaint submitted',
       body: `Your complaint ID: ${complaint.complaintId}. Use it to track status.`,
     });
+    const io = getIo();
+    if (io) {
+      io.to(`user:${req.user.id}`).emit('notification', { type: 'complaint_raised', title: 'Complaint submitted', body: `Your complaint ID: ${complaint.complaintId}. Use it to track status.` });
+    }
   } catch (err) {
     req.log?.error?.(err) || console.error('Notification create failed:', err);
   }
@@ -27,6 +32,10 @@ async function createComplaint(req, reply) {
       title: 'New complaint received',
       body: `Complaint ${complaint.complaintId} submitted.`,
     });
+    const ioAdmin = getIo();
+    if (ioAdmin) {
+      ioAdmin.to('admin').emit('notification', { type: 'complaint_received', title: 'New complaint received', body: `Complaint ${complaint.complaintId} submitted.` });
+    }
   } catch (err) {
     req.log?.error?.(err) || console.error('Notification notifyAdmins failed:', err);
   }
@@ -112,6 +121,10 @@ async function updateStatus(req, reply) {
       title: 'Complaint status updated',
       body: `Your complaint ${complaint.complaintId} is now ${status.replace(/_/g, ' ')}.`,
     });
+    const ioStatus = getIo();
+    if (ioStatus) {
+      ioStatus.to(`user:${complaint.userId}`).emit('notification', { type: 'status_updated', title: 'Complaint status updated', body: `Your complaint ${complaint.complaintId} is now ${status.replace(/_/g, ' ')}.` });
+    }
   } catch (err) {
     req.log?.error?.(err) || console.error('Notification create failed:', err);
   }

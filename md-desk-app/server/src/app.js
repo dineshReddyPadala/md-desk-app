@@ -15,6 +15,7 @@ const authenticateJWT = require('./middleware/authenticateJWT');
 const authorizeRole = require('./middleware/authorizeRole');
 const { errorHandler } = require('./middleware/errorHandler');
 const registerRoutes = require('./routes');
+const { attachSocket } = require('./socket');
 
 const logger = createLogger(config.logLevel);
 
@@ -48,6 +49,7 @@ async function start() {
   const app = await build();
   try {
     await app.listen({ port: config.port, host: '0.0.0.0' });
+    attachSocket(app);
     app.log.info(`Server listening on http://0.0.0.0:${config.port}`);
     app.log.info(`API prefix: ${config.apiPrefix}`);
     app.log.info(`Swagger docs: http://localhost:${config.port}/docs`);
