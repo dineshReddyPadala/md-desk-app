@@ -43,21 +43,16 @@ final _router = GoRouter(
   routes: [
     GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
     GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
+    GoRoute(path: '/', redirect: (_, __) => '/dashboard'),
     ShellRoute(
       builder: (_, __, child) => AppShell(child: child),
       routes: [
-        GoRoute(
-          path: '/',
-          redirect: (_, __) => '/dashboard',
-          routes: [
-            GoRoute(path: 'dashboard', builder: (_, __) => const DashboardScreen()),
-            GoRoute(path: 'raise-complaint', builder: (_, __) => const RaiseComplaintScreen()),
-            GoRoute(path: 'track', builder: (_, __) => const TrackComplaintScreen()),
-            GoRoute(path: 'message-md', builder: (_, __) => const MessageMDScreen()),
-            GoRoute(path: 'products', builder: (_, __) => const ProductsScreen()),
-            GoRoute(path: 'dealers', builder: (_, __) => const DealerLocatorScreen()),
-          ],
-        ),
+        GoRoute(path: '/dashboard', builder: (_, __) => const DashboardScreen()),
+        GoRoute(path: '/raise-complaint', builder: (_, __) => const RaiseComplaintScreen()),
+        GoRoute(path: '/track', builder: (_, __) => const TrackComplaintScreen()),
+        GoRoute(path: '/message-md', builder: (_, __) => const MessageMDScreen()),
+        GoRoute(path: '/products', builder: (_, __) => const ProductsScreen()),
+        GoRoute(path: '/dealers', builder: (_, __) => const DealerLocatorScreen()),
       ],
     ),
   ],
