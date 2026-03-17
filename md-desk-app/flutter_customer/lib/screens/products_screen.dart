@@ -53,9 +53,6 @@ class _ProductsScreenState extends State<ProductsScreen> {
             return name.contains(q) || desc.contains(q);
           }).toList();
 
-    final isNarrow = MediaQuery.sizeOf(context).width < 400;
-    final imageHeight = isNarrow ? 120.0 : 140.0;
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -96,7 +93,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: crossAxisCount,
-                    childAspectRatio: isNarrow ? 0.72 : 0.78,
+                    childAspectRatio: 0.75,
                     crossAxisSpacing: 10,
                     mainAxisSpacing: 10,
                   ),
@@ -110,16 +107,15 @@ class _ProductsScreenState extends State<ProductsScreen> {
                       clipBehavior: Clip.antiAlias,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
-                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          if (imageUrl != null && imageUrl.isNotEmpty)
-                            Image.network(imageUrl, height: imageHeight, fit: BoxFit.cover)
-                          else
-                            Container(
-                              height: imageHeight,
-                              color: theme.colorScheme.surfaceContainerHighest,
-                              child: Icon(Icons.image, size: 40, color: theme.colorScheme.outline),
-                            ),
+                          Expanded(
+                            child: imageUrl != null && imageUrl.isNotEmpty
+                                ? Image.network(imageUrl, fit: BoxFit.cover)
+                                : Container(
+                                    color: theme.colorScheme.surfaceContainerHighest,
+                                    child: Icon(Icons.image, size: 40, color: theme.colorScheme.outline),
+                                  ),
+                          ),
                           Padding(
                             padding: const EdgeInsets.all(8),
                             child: Column(

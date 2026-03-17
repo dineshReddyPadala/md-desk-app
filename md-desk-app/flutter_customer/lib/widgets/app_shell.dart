@@ -72,8 +72,8 @@ class _AppShellState extends State<AppShell> {
                       TextButton(
                         onPressed: () async {
                           try {
-                            await client.post('/notifications/mark-all-read');
-                            _refreshUnreadCount();
+                            await client.post('/notifications/mark-all-read', <String, dynamic>{});
+                            await _refreshUnreadCount();
                             if (mounted) Navigator.of(ctx).pop();
                           } catch (_) {}
                         },
