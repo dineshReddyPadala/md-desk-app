@@ -23,6 +23,8 @@ import MessageIcon from '@mui/icons-material/Message';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import StorefrontIcon from '@mui/icons-material/Storefront';
+import FolderIcon from '@mui/icons-material/Folder';
+import PeopleIcon from '@mui/icons-material/People';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonIcon from '@mui/icons-material/Person';
 import NotificationsIcon from '@mui/icons-material/Notifications';
@@ -36,8 +38,10 @@ const nav = [
   { to: '/complaints', label: 'Complaints', icon: <ReportProblemIcon /> },
   { to: '/messages', label: 'Messages', icon: <MessageIcon /> },
   { to: '/reports', label: 'Reports', icon: <BarChartIcon /> },
+  { to: '/projects', label: 'Project Management', icon: <FolderIcon /> },
   { to: '/products', label: 'Products', icon: <InventoryIcon /> },
   { to: '/dealers', label: 'Dealers', icon: <StorefrontIcon /> },
+  { to: '/clients', label: 'Client Management', icon: <PeopleIcon /> },
 ];
 
 export default function Layout() {
@@ -74,7 +78,7 @@ export default function Layout() {
     },
   });
 
-  const u = user as { name?: string; email?: string; phone?: string; city?: string; role?: string } | null;
+  const u = user as { name?: string; email?: string; phone?: string; city?: string; company?: string; role?: string } | null;
   const notifications = (notifData?.items || []) as Array<{ id: string; title: string; body?: string | null; readAt?: string | null; createdAt: string }>;
   const unreadCount = countData?.count ?? 0;
 
@@ -113,6 +117,7 @@ export default function Layout() {
           <Typography variant="body1" fontWeight={600}>{u?.name || '—'}</Typography>
           <Typography variant="body2" color="text.secondary">{u?.email || '—'}</Typography>
           {u?.role && <Typography variant="caption" color="text.secondary" display="block">Role: {u.role}</Typography>}
+          {u?.company && <Typography variant="body2" color="text.secondary">{u.company}</Typography>}
           {u?.phone && <Typography variant="body2" color="text.secondary">{u.phone}</Typography>}
           {u?.city && <Typography variant="body2" color="text.secondary">{u.city}</Typography>}
         </Box>

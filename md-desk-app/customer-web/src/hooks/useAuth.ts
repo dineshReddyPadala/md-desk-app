@@ -37,11 +37,19 @@ export function useAuth() {
     setUser(res.data.user);
   };
 
+  const loginWithOtp = async (email: string, otp: string) => {
+    const res = await authApi.verifyLoginOtp(email, otp);
+    const t = res.data.token;
+    localStorage.setItem('token', t);
+    setToken(t);
+    setUser(res.data.user);
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     setToken(null);
     setUser(null);
   };
 
-  return { token, user, register, login, logout, isLoading };
+  return { token, user, register, login, loginWithOtp, logout, isLoading };
 }

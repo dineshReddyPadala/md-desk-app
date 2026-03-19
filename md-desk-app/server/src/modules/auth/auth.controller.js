@@ -25,9 +25,33 @@ async function login(req, reply) {
   return reply.send({ success: true, ...result });
 }
 
+async function forgotPassword(req, reply) {
+  const { email } = req.body;
+  await authService.forgotPassword(req.server.prisma, email);
+  return reply.send({ success: true, message: 'If an account exists with this email, you will receive a reset link.' });
+}
+
+async function resetPassword(req, reply) {
+  const { token, newPassword } = req.body;
+  await authService.resetPassword(req.server.prisma, token, newPassword);
+  return reply.send({ success: true, message: 'Password updated. You can now sign in.' });
+}
+
+async function sendLoginOtp(req, reply) {
+  const { email } = req.body;
+  await authService.sendLoginOtp(req.server.prisma, email);
+  return reply.send({ success: true, message: 'OTP sent to your email' });
+}
+
+async function verifyLoginOtp(req, reply) {
+  const { email, otp } = req.body;
+  const result = await authService.verifyLoginOtp(req.server.prisma, email, otp);
+  return reply.send({ success: true, ...result });
+}
+
 async function me(req, reply) {
   const user = await authService.getMe(req.server.prisma, req.user.id);
   return reply.send({ success: true, user });
 }
 
-module.exports = { sendOtp, register, login, me };
+module.exports = { sendOtp, register, login, me, forgotPassword, resetPassword, sendLoginOtp, verifyLoginOtp };

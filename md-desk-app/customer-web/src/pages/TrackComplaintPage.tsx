@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Box,
@@ -21,8 +22,17 @@ const statusSteps = ['RECEIVED', 'UNDER_REVIEW', 'IN_PROGRESS', 'RESOLVED'];
 const stepColors = ['#0097d7', '#f37336', '#ffb74d', '#2e7d32'];
 
 export default function TrackComplaintPage() {
-  const [complaintId, setComplaintId] = useState('');
-  const [searchId, setSearchId] = useState('');
+  const [searchParams] = useSearchParams();
+  const idFromUrl = searchParams.get('complaintId') ?? '';
+  const [complaintId, setComplaintId] = useState(idFromUrl);
+  const [searchId, setSearchId] = useState(idFromUrl);
+
+  useEffect(() => {
+    if (idFromUrl) {
+      setComplaintId(idFromUrl);
+      setSearchId(idFromUrl);
+    }
+  }, [idFromUrl]);
 
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['track-complaint', searchId],

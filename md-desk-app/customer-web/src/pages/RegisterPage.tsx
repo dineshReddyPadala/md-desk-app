@@ -7,6 +7,7 @@ import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import PhoneIcon from '@mui/icons-material/Phone';
 import LocationOnOutlinedIcon from '@mui/icons-material/LocationOnOutlined';
 import PinOutlinedIcon from '@mui/icons-material/PinOutlined';
+import BusinessOutlinedIcon from '@mui/icons-material/BusinessOutlined';
 import { useAuth } from '../hooks/useAuth';
 import { authApi } from '../api/endpoints';
 
@@ -14,6 +15,7 @@ export default function RegisterPage() {
   const [step, setStep] = useState<1 | 2>(1);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [company, setCompany] = useState('');
   const [otp, setOtp] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -66,6 +68,7 @@ export default function RegisterPage() {
         otp,
         password,
         confirmPassword,
+        company: company.trim() || undefined,
         phone: phone.trim() || undefined,
         city: city.trim() || undefined,
       });
@@ -90,6 +93,7 @@ export default function RegisterPage() {
             <form onSubmit={handleSendOtp}>
               <TextField fullWidth label="Name" value={name} onChange={(e) => setName(e.target.value)} sx={{ mb: 2 }} required />
               <TextField fullWidth label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} sx={{ mb: 2 }} required InputProps={{ startAdornment: <InputAdornment position="start"><EmailOutlinedIcon sx={{ color: 'action.active' }} /></InputAdornment> }} />
+              <TextField fullWidth label="Company" value={company} onChange={(e) => setCompany(e.target.value)} sx={{ mb: 2 }} placeholder="Optional" InputProps={{ startAdornment: <InputAdornment position="start"><BusinessOutlinedIcon sx={{ color: 'action.active' }} /></InputAdornment> }} />
               <Button type="submit" fullWidth variant="contained" size="large" disabled={sendingOtp} sx={{ py: 1.5 }}>{sendingOtp ? 'Sending…' : 'Send OTP'}</Button>
             </form>
           )}
@@ -98,6 +102,7 @@ export default function RegisterPage() {
             <form onSubmit={handleRegister}>
               <TextField fullWidth label="Name" value={name} onChange={(e) => setName(e.target.value)} sx={{ mb: 2 }} required />
               <TextField fullWidth label="Email" type="email" value={email} disabled sx={{ mb: 2 }} InputProps={{ startAdornment: <InputAdornment position="start"><EmailOutlinedIcon sx={{ color: 'action.active' }} /></InputAdornment> }} />
+              <TextField fullWidth label="Company" value={company} onChange={(e) => setCompany(e.target.value)} sx={{ mb: 2 }} InputProps={{ startAdornment: <InputAdornment position="start"><BusinessOutlinedIcon sx={{ color: 'action.active' }} /></InputAdornment> }} />
               <TextField fullWidth label="OTP (6 digits)" value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="Enter code from email" sx={{ mb: 2 }} required inputProps={{ maxLength: 6 }} InputProps={{ startAdornment: <InputAdornment position="start"><PinOutlinedIcon sx={{ color: 'action.active' }} /></InputAdornment> }} />
               <TextField fullWidth label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} sx={{ mb: 2 }} required inputProps={{ minLength: 6 }} InputProps={{ startAdornment: <InputAdornment position="start"><LockOutlinedIcon sx={{ color: 'action.active' }} /></InputAdornment> }} />
               <TextField fullWidth label="Confirm password" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} sx={{ mb: 2 }} required inputProps={{ minLength: 6 }} InputProps={{ startAdornment: <InputAdornment position="start"><LockOutlinedIcon sx={{ color: 'action.active' }} /></InputAdornment> }} />

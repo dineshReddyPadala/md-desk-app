@@ -96,6 +96,7 @@ class _RegisterFormState extends State<_RegisterForm> {
   final _confirmPassword = TextEditingController();
   final _phone = TextEditingController();
   final _city = TextEditingController();
+  final _company = TextEditingController();
   String? _error;
   bool _loading = false;
 
@@ -108,6 +109,7 @@ class _RegisterFormState extends State<_RegisterForm> {
     _confirmPassword.dispose();
     _phone.dispose();
     _city.dispose();
+    _company.dispose();
     super.dispose();
   }
 
@@ -160,6 +162,7 @@ class _RegisterFormState extends State<_RegisterForm> {
         'otp': otp,
         'password': _password.text,
         'confirmPassword': _confirmPassword.text,
+        if (_company.text.trim().isNotEmpty) 'company': _company.text.trim(),
         if (_phone.text.trim().isNotEmpty) 'phone': _phone.text.trim(),
         if (_city.text.trim().isNotEmpty) 'city': _city.text.trim(),
       });
@@ -192,6 +195,16 @@ class _RegisterFormState extends State<_RegisterForm> {
             controller: _email,
             decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
             keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _company,
+            decoration: const InputDecoration(
+              labelText: 'Company',
+              hintText: 'Optional',
+              border: OutlineInputBorder(),
+            ),
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => _sendOtp(),
           ),
@@ -217,6 +230,11 @@ class _RegisterFormState extends State<_RegisterForm> {
           controller: _email,
           decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder()),
           enabled: false,
+        ),
+        const SizedBox(height: 12),
+        TextField(
+          controller: _company,
+          decoration: const InputDecoration(labelText: 'Company', border: OutlineInputBorder()),
         ),
         const SizedBox(height: 12),
         TextField(

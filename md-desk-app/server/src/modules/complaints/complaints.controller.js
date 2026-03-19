@@ -112,8 +112,8 @@ async function highPriority(req, reply) {
 
 async function updateStatus(req, reply) {
   const { id } = req.params;
-  const { status } = req.body;
-  const complaint = await complaintsService.updateStatus(req.server.prisma, id, status);
+  const { status, priority } = req.body || {};
+  const complaint = await complaintsService.updateStatus(req.server.prisma, id, status, priority);
   try {
     await notificationsService.create(req.server.prisma, {
       userId: complaint.userId,

@@ -1,7 +1,7 @@
 const createComplaintSchema = {
   body: {
     type: 'object',
-    required: ['product_used', 'project_location', 'description'],
+    required: ['project_location', 'description', 'category'],
     properties: {
       name: { type: 'string' },
       phone: { type: 'string' },
@@ -9,7 +9,7 @@ const createComplaintSchema = {
       product_used: { type: 'string' },
       project_location: { type: 'string' },
       description: { type: 'string' },
-      priority: { type: 'string', enum: ['high', 'medium', 'low'] },
+      category: { type: 'string', enum: ['PRODUCT', 'SERVICE', 'DELIVERY', 'TECHNICAL'] },
     },
   },
 };
@@ -21,6 +21,7 @@ const updateStatusSchema = {
     required: ['status'],
     properties: {
       status: { type: 'string', enum: ['RECEIVED', 'UNDER_REVIEW', 'IN_PROGRESS', 'RESOLVED'] },
+      priority: { type: 'string', enum: ['HIGH', 'MEDIUM', 'LOW'] },
     },
   },
 };

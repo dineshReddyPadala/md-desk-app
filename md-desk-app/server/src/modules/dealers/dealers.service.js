@@ -77,4 +77,38 @@ async function remove(prisma, id) {
   return prisma.dealer.delete({ where: { id } });
 }
 
-module.exports = { list, getById, create, update, remove };
+async function bulkCreateFromRows(prisma, rows) {
+  const created = [];
+  const errors = [];
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const name = row.name != null ? String(row.name).trim() : '';
+    if (!name) {
+      errors.push({ row: i + 1, message: 'Name is required' });
+      continue;
+    }
+    try {
+      const existing = await findByNameAndCity(prisma, name, row.city);
+      if (existing) {
+        errors.push({ row: i + 1, message: 'A dealer with this name and city already exists' });
+        continue;
+      }
+      const dealer = await prisma.dealer.create({
+        data: {
+          name,
+          city: row.city != null ? String(row.city).trim() || null : null,
+          phone: row.phone != null ? String(row.phone).trim() || null : null,
+          imageUrl: row.imageUrl != null ? String(row.imageUrl).trim() || null : null,
+          locationLat: row.locationLat != null ? Number(row.locationLat) : undefined,
+          locationLong: row.locationLong != null ? Number(row.locationLong) : undefined,
+        },
+      });
+      created.push(dealer);
+    } catch (e) {
+      errors.push({ row: i + 1, message: e.message || 'Failed to create' });
+    }
+  }
+  return { created, errors };
+}
+
+module.exports = { list, getById, create, update, remove, bulkCreateFromRows };

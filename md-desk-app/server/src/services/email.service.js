@@ -62,4 +62,22 @@ async function sendOtpEmail(toEmail, otp) {
   });
 }
 
-module.exports = { sendMail, sendAcknowledgmentEmail, sendStatusUpdateEmail, sendOtpEmail };
+async function sendPasswordResetEmail(toEmail, resetLink) {
+  await sendMail({
+    to: toEmail,
+    subject: 'Reset your MD Desk password',
+    text: `You requested a password reset. Click the link below to set a new password:\n\n${resetLink}\n\nThis link expires in 1 hour. If you did not request this, ignore this email.\n\nMD Desk - Techno Paints`,
+    html: `<p>You requested a password reset. <a href="${resetLink}">Click here to set a new password</a>.</p><p>This link expires in 1 hour. If you did not request this, ignore this email.</p><p>MD Desk - Techno Paints</p>`,
+  });
+}
+
+async function sendNewClientEmail(toEmail, userName, temporaryPassword) {
+  await sendMail({
+    to: toEmail,
+    subject: 'Your MD Desk client account',
+    text: `Dear ${userName || 'Customer'},\n\nAn MD Desk client account has been created for you.\n\nEmail: ${toEmail}\nTemporary password: ${temporaryPassword}\n\nPlease sign in and change your password. You can use the Forgot Password option on the login page if needed.\n\nBest regards,\nMD Desk - Techno Paints`,
+    html: `<p>Dear ${userName || 'Customer'},</p><p>An MD Desk client account has been created for you.</p><p><strong>Email:</strong> ${toEmail}<br/><strong>Temporary password:</strong> ${temporaryPassword}</p><p>Please sign in and change your password. You can use the Forgot Password option on the login page if needed.</p><p>Best regards,<br/>MD Desk - Techno Paints</p>`,
+  });
+}
+
+module.exports = { sendMail, sendAcknowledgmentEmail, sendStatusUpdateEmail, sendOtpEmail, sendPasswordResetEmail, sendNewClientEmail };

@@ -3,7 +3,7 @@ import api from './client';
 export const authApi = {
   sendOtp: (email: string) =>
     api.post<{ success: boolean; message?: string }>('/auth/send-otp', { email }),
-  register: (data: { name: string; email: string; otp: string; password: string; confirmPassword: string; phone?: string; city?: string }) =>
+  register: (data: { name: string; email: string; otp: string; password: string; confirmPassword: string; phone?: string; city?: string; company?: string }) =>
     api.post<{ success: boolean; user: unknown; token: string }>('/auth/register', data),
   login: (emailOrPhone: string, password: string) => {
     const isEmail = emailOrPhone.includes('@');
@@ -11,6 +11,14 @@ export const authApi = {
     return api.post<{ success: boolean; user: unknown; token: string }>('/auth/login', body);
   },
   me: () => api.get<{ success: boolean; user: unknown }>('/auth/me'),
+  forgotPassword: (email: string) =>
+    api.post<{ success: boolean; message?: string }>('/auth/forgot-password', { email }),
+  resetPassword: (token: string, newPassword: string) =>
+    api.post<{ success: boolean; message?: string }>('/auth/reset-password', { token, newPassword }),
+  sendLoginOtp: (email: string) =>
+    api.post<{ success: boolean; message?: string }>('/auth/send-login-otp', { email }),
+  verifyLoginOtp: (email: string, otp: string) =>
+    api.post<{ success: boolean; user: unknown; token: string }>('/auth/verify-login-otp', { email, otp }),
 };
 
 export const complaintsApi = {

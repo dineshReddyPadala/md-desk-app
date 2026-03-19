@@ -6,6 +6,8 @@ const dashboardRoutes = require('../modules/dashboard/dashboard.routes');
 const productsRoutes = require('../modules/products/products.routes');
 const dealersRoutes = require('../modules/dealers/dealers.routes');
 const notificationsRoutes = require('../modules/notifications/notifications.routes');
+const clientsAdminRoutes = require('../modules/clients/clients.routes');
+const projectsAdminRoutes = require('../modules/projects/projects.routes');
 
 const complaintsController = require('../modules/complaints/complaints.controller');
 const productsController = require('../modules/products/products.controller');
@@ -33,6 +35,8 @@ async function registerRoutes(fastify) {
   fastify.register(productsRoutes, { prefix: '/products' });
   fastify.register(dealersRoutes, { prefix: '/dealers' });
   fastify.register(notificationsRoutes, { prefix: '/notifications' });
+  fastify.register(clientsAdminRoutes, { prefix: '/admin/clients' });
+  fastify.register(projectsAdminRoutes, { prefix: '/admin/projects' });
 
   fastify.register(async (instance) => {
     const admin = composePreHandlers(instance.authenticateJWT, instance.authorizeRole('ADMIN'));
@@ -46,6 +50,8 @@ async function registerRoutes(fastify) {
   fastify.register(async (instance) => {
     const admin = composePreHandlers(instance.authenticateJWT, instance.authorizeRole('ADMIN'));
     const adminSchema = { tags: ['dealers'], security: [{ bearerAuth: [] }] };
+    instance.get('/template', { preHandler: admin, schema: { ...adminSchema, summary: 'Download dealers Excel template' } }, dealersController.template);
+    instance.post('/bulk-upload', { preHandler: admin, schema: { ...adminSchema, summary: 'Bulk upload dealers via Excel' } }, dealersController.bulkUpload);
     instance.post('/', { preHandler: admin, schema: { ...adminSchema, summary: 'Create dealer', body: createDealerSchema.body } }, dealersController.create);
     instance.get('/:id', { preHandler: admin, schema: { ...adminSchema, summary: 'Get dealer (admin)', params: dealerIdParam.params } }, dealersController.getById);
     instance.put('/:id', { preHandler: admin, schema: { ...adminSchema, summary: 'Update dealer', params: updateDealerSchema.params, body: updateDealerSchema.body } }, dealersController.update);

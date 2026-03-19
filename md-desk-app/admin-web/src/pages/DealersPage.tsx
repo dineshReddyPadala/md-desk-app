@@ -23,6 +23,8 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ImageIcon from '@mui/icons-material/Image';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import DownloadIcon from '@mui/icons-material/Download';
 import { dealersApi, uploadApi, type DealerDto } from '../api/endpoints';
 import { getBackendErrorMessage } from '../api/getBackendErrorMessage';
 
@@ -34,6 +36,8 @@ export default function DealersPage() {
   const [phone, setPhone] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [bulkFile, setBulkFile] = useState<File | null>(null);
+  const [bulkError, setBulkError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -62,6 +66,33 @@ export default function DealersPage() {
     mutationFn: (id: string) => dealersApi.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['dealers'] }),
   });
+  const bulkUploadMutation = useMutation({
+    mutationFn: (file: File) => dealersApi.bulkUpload(file),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['dealers'] });
+      setBulkFile(null);
+      setBulkError(null);
+      const msg = res.data.errors?.length
+        ? `Created ${res.data.created}. Some rows had errors: ${res.data.errors.map((e: { row: number; message: string }) => `Row ${e.row}: ${e.message}`).join('; ')}`
+        : `Created ${res.data.created} dealer(s).`;
+      alert(msg);
+    },
+    onError: (err: unknown) => setBulkError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Bulk upload failed'),
+  });
+
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await dealersApi.downloadTemplate();
+      const url = URL.createObjectURL(res.data as Blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'dealers_template.xlsx';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setBulkError('Failed to download template');
+    }
+  };
 
   const resetAndClose = () => {
     setOpen(false);
@@ -120,10 +151,23 @@ export default function DealersPage() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 3 }}>
         <Typography variant="h4" fontWeight={700}>Dealers</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenAdd}>Add Dealer</Button>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownloadTemplate}>Download template</Button>
+          <Button component="label" variant="outlined" startIcon={<UploadFileIcon />}>
+            Bulk upload (Excel)
+            <input type="file" accept=".xlsx,.xls" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) { setBulkError(null); setBulkFile(f); } }} />
+          </Button>
+          {bulkFile && (
+            <Button variant="contained" onClick={() => bulkUploadMutation.mutate(bulkFile)} disabled={bulkUploadMutation.isPending}>
+              Upload {bulkFile.name}
+            </Button>
+          )}
+          <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenAdd}>Add Dealer</Button>
+        </Box>
       </Box>
+      {bulkError && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setBulkError(null)}>{bulkError}</Alert>}
       <TableContainer component={Paper}>
         <Table>
           <TableHead>

@@ -20,20 +20,11 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
   final _projectLocationController = TextEditingController();
   final _descriptionController = TextEditingController();
 
-  List<Map<String, dynamic>> _products = [];
-  String _productUsed = '';
-  String _priority = 'medium';
+  String _category = 'PRODUCT';
   List<XFile> _pickedFiles = [];
   String? _error;
-  bool _loadingProducts = false;
   bool _submitting = false;
   String? _successComplaintId;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadProducts();
-  }
 
   @override
   void dispose() {
@@ -43,26 +34,6 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
     _projectLocationController.dispose();
     _descriptionController.dispose();
     super.dispose();
-  }
-
-  Future<void> _loadProducts() async {
-    final client = context.read<AuthProvider>().client;
-    if (client == null) return;
-    setState(() => _loadingProducts = true);
-    try {
-      final res = await client.get('/products');
-      final list = (res['products'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-      if (mounted) setState(() {
-        _products = list;
-        _loadingProducts = false;
-        if (list.isNotEmpty && _productUsed.isEmpty) _productUsed = list.first['name'] as String? ?? '';
-      });
-    } catch (e) {
-      if (mounted) setState(() {
-        _loadingProducts = false;
-        _error = e.toString().replaceFirst('Exception: ', '');
-      });
-    }
   }
 
   Future<void> _pickImages() async {
@@ -76,8 +47,8 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
     final name = _nameController.text.trim();
     final projectLocation = _projectLocationController.text.trim();
     final description = _descriptionController.text.trim();
-    if (name.isEmpty || projectLocation.isEmpty || description.isEmpty || _productUsed.isEmpty) {
-      setState(() => _error = 'Please fill required fields: Name, Product, Project location, Description.');
+    if (name.isEmpty || projectLocation.isEmpty || description.isEmpty) {
+      setState(() => _error = 'Please fill required fields: Name, Project location, Description.');
       return;
     }
     final client = context.read<AuthProvider>().client;
@@ -92,10 +63,9 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
         'name': name,
         'phone': _phoneController.text.trim(),
         'city': _cityController.text.trim(),
-        'product_used': _productUsed,
         'project_location': projectLocation,
         'description': description,
-        'priority': _priority,
+        'category': _category,
       };
       List<http.MultipartFile>? files;
       if (_pickedFiles.isNotEmpty) {
@@ -182,19 +152,6 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
                     const SizedBox(height: 24),
                     Text('Complaint details', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, color: theme.colorScheme.primary)),
                     const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      value: _productUsed.isEmpty ? null : _productUsed,
-                      decoration: const InputDecoration(labelText: 'Product', border: OutlineInputBorder()),
-                      items: [
-                        const DropdownMenuItem(value: null, child: Text('Select product')),
-                        ..._products.map((p) {
-                          final name = p['name'] as String? ?? '';
-                          return DropdownMenuItem(value: name, child: Text(name));
-                        }),
-                      ],
-                      onChanged: _loadingProducts ? null : (v) => setState(() => _productUsed = v ?? ''),
-                    ),
-                    const SizedBox(height: 12),
                     TextField(
                       controller: _projectLocationController,
                       decoration: const InputDecoration(labelText: 'Project location', border: OutlineInputBorder()),
@@ -207,14 +164,15 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      value: _priority,
-                      decoration: const InputDecoration(labelText: 'Priority', border: OutlineInputBorder()),
+                      value: _category,
+                      decoration: const InputDecoration(labelText: 'Category', border: OutlineInputBorder()),
                       items: const [
-                        DropdownMenuItem(value: 'low', child: Text('Low')),
-                        DropdownMenuItem(value: 'medium', child: Text('Medium')),
-                        DropdownMenuItem(value: 'high', child: Text('High')),
+                        DropdownMenuItem(value: 'PRODUCT', child: Text('Product')),
+                        DropdownMenuItem(value: 'SERVICE', child: Text('Service')),
+                        DropdownMenuItem(value: 'DELIVERY', child: Text('Delivery')),
+                        DropdownMenuItem(value: 'TECHNICAL', child: Text('Technical')),
                       ],
-                      onChanged: (v) => setState(() => _priority = v ?? 'medium'),
+                      onChanged: (v) => setState(() => _category = v ?? 'PRODUCT'),
                     ),
                     const SizedBox(height: 24),
                     Text('Attachments', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, color: theme.colorScheme.primary)),

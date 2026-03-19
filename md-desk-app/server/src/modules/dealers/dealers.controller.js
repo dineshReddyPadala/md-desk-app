@@ -1,4 +1,5 @@
 const dealersService = require('./dealers.service');
+const XLSX = require('xlsx');
 
 async function list(req, reply) {
   const { city } = req.query || {};
@@ -34,4 +35,44 @@ async function remove(req, reply) {
   return reply.send({ success: true });
 }
 
-module.exports = { list, getById, create, update, remove };
+async function bulkUpload(req, reply) {
+  const data = await req.file();
+  if (!data) {
+    return reply.status(400).send({ success: false, message: 'No file uploaded' });
+  }
+  const buffer = await data.toBuffer();
+  const workbook = XLSX.read(buffer, { type: 'buffer' });
+  const sheetName = workbook.SheetNames[0];
+  const sheet = workbook.Sheets[sheetName];
+  const rows = XLSX.utils.sheet_to_json(sheet);
+  const normalized = rows.map((r) => ({
+    name: r.Name ?? r.name ?? '',
+    city: r.City ?? r.city ?? null,
+    phone: r.Phone ?? r.phone ?? null,
+    imageUrl: r.ImageUrl ?? r.imageUrl ?? null,
+    locationLat: r.LocationLat ?? r.locationLat ?? null,
+    locationLong: r.LocationLong ?? r.locationLong ?? null,
+  }));
+  const { created, errors } = await dealersService.bulkCreateFromRows(req.server.prisma, normalized);
+  return reply.send({
+    success: true,
+    created: created.length,
+    errors: errors.length ? errors : undefined,
+    dealers: created,
+  });
+}
+
+function template(req, reply) {
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['Name', 'City', 'Phone', 'ImageUrl', 'LocationLat', 'LocationLong'],
+    ['Dealer One', 'Mumbai', '+91 9876543210', '', '', ''],
+  ]);
+  XLSX.utils.book_append_sheet(wb, ws, 'Dealers');
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  reply.header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  reply.header('Content-Disposition', 'attachment; filename=dealers_template.xlsx');
+  return reply.send(buf);
+}
+
+module.exports = { list, getById, create, update, remove, bulkUpload, template };

@@ -3,7 +3,10 @@ import { useAuth } from './hooks/useAuth';
 import Layout from './layouts/Layout';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import DashboardPage from './pages/DashboardPage';
+import MyComplaintsPage from './pages/MyComplaintsPage';
 import RaiseComplaintPage from './pages/RaiseComplaintPage';
 import TrackComplaintPage from './pages/TrackComplaintPage';
 import MessageMDPage from './pages/MessageMDPage';
@@ -22,6 +25,8 @@ export default function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route
         path="/"
         element={
@@ -32,6 +37,7 @@ export default function App() {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="complaints" element={<MyComplaintsPage />} />
         <Route path="raise-complaint" element={<RaiseComplaintPage />} />
         <Route path="track" element={<TrackComplaintPage />} />
         <Route path="message-md" element={<MessageMDPage />} />

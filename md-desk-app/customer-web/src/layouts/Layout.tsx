@@ -35,7 +35,7 @@ import { useSocket } from '../socket/useSocket';
 
 const nav = [
   { to: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
-  { to: '/raise-complaint', label: 'Raise Complaint', icon: <ReportProblemIcon /> },
+  { to: '/complaints', label: 'Complaints', icon: <ReportProblemIcon /> },
   { to: '/track', label: 'Track Complaint', icon: <TrackChangesIcon /> },
   { to: '/message-md', label: 'Message MD', icon: <MessageIcon /> },
   { to: '/products', label: 'Products', icon: <InventoryIcon /> },
@@ -77,7 +77,7 @@ export default function Layout() {
     },
   });
 
-  const u = user as { name?: string; email?: string; phone?: string; city?: string } | null;
+  const u = user as { name?: string; email?: string; phone?: string; city?: string; company?: string } | null;
   const notifications = (notifData?.items || []) as Array<{ id: string; title: string; body?: string | null; readAt?: string | null; createdAt: string }>;
   const unreadCount = countData?.count ?? 0;
 
@@ -115,6 +115,7 @@ export default function Layout() {
           <Typography variant="subtitle2" color="text.secondary">Profile</Typography>
           <Typography variant="body1" fontWeight={600}>{u?.name || '—'}</Typography>
           <Typography variant="body2" color="text.secondary">{u?.email || '—'}</Typography>
+          {u?.company && <Typography variant="body2" color="text.secondary">{u.company}</Typography>}
           {u?.phone && <Typography variant="body2" color="text.secondary">{u.phone}</Typography>}
           {u?.city && <Typography variant="body2" color="text.secondary">{u.city}</Typography>}
         </Box>

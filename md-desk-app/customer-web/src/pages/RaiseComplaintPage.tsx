@@ -13,29 +13,21 @@ import {
   Select,
   Alert,
   FormHelperText,
-  Skeleton,
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { complaintsApi, productsApi } from '../api/endpoints';
+import { complaintsApi } from '../api/endpoints';
 
 export default function RaiseComplaintPage() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
-  const [productUsed, setProductUsed] = useState('');
   const [projectLocation, setProjectLocation] = useState('');
   const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState('medium');
+  const [category, setCategory] = useState<string>('PRODUCT');
   const [files, setFiles] = useState<File[]>([]);
   const [successId, setSuccessId] = useState<string | null>(null);
-
-  const { data: productsData, isLoading: productsLoading } = useQuery({
-    queryKey: ['products'],
-    queryFn: async () => (await productsApi.list()).data,
-  });
-  const products = (productsData?.products || []) as Array<{ id: string; name: string; description?: string | null }>;
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -43,10 +35,9 @@ export default function RaiseComplaintPage() {
       form.append('name', name);
       form.append('phone', phone);
       form.append('city', city);
-      form.append('product_used', productUsed);
       form.append('project_location', projectLocation);
       form.append('description', description);
-      form.append('priority', priority);
+      form.append('category', category);
       files.forEach((f) => form.append('photos', f));
       return complaintsApi.create(form);
     },
@@ -94,34 +85,22 @@ export default function RaiseComplaintPage() {
 
           <Typography variant="subtitle1" fontWeight={600} color="primary.main" gutterBottom>Complaint details</Typography>
           <Box sx={{ display: 'grid', gap: 2, mb: 3 }}>
-            <FormControl fullWidth required sx={{ minHeight: 56 }}>
-              <InputLabel id="raise-product-label" shrink>Product</InputLabel>
-              <Select
-                labelId="raise-product-label"
-                value={productUsed}
-                label="Product"
-                onChange={(e) => setProductUsed(e.target.value)}
-                displayEmpty
-                disabled={productsLoading}
-                renderValue={(v) => (v ? v : 'Select product')}
-              >
-                <MenuItem value="">Select product</MenuItem>
-                {products.map((p) => (
-                  <MenuItem key={p.id} value={p.name}>{p.name}</MenuItem>
-                ))}
-              </Select>
-              {productsLoading && <Skeleton variant="text" width="60%" sx={{ mt: 0.5 }} />}
-              <FormHelperText>Choose the product related to your complaint</FormHelperText>
-            </FormControl>
             <TextField fullWidth label="Project location" value={projectLocation} onChange={(e) => setProjectLocation(e.target.value)} required />
             <TextField fullWidth multiline rows={4} label="Description" value={description} onChange={(e) => setDescription(e.target.value)} required placeholder="Describe the issue in detail…" />
-            <FormControl fullWidth>
-              <InputLabel>Priority</InputLabel>
-              <Select value={priority} label="Priority" onChange={(e) => setPriority(e.target.value)}>
-                <MenuItem value="low">Low</MenuItem>
-                <MenuItem value="medium">Medium</MenuItem>
-                <MenuItem value="high">High</MenuItem>
+            <FormControl fullWidth required>
+              <InputLabel id="raise-category-label">Category</InputLabel>
+              <Select
+                labelId="raise-category-label"
+                value={category}
+                label="Category"
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                <MenuItem value="PRODUCT">Product</MenuItem>
+                <MenuItem value="SERVICE">Service</MenuItem>
+                <MenuItem value="DELIVERY">Delivery</MenuItem>
+                <MenuItem value="TECHNICAL">Technical</MenuItem>
               </Select>
+              <FormHelperText>Select the category that best describes your complaint</FormHelperText>
             </FormControl>
           </Box>
 

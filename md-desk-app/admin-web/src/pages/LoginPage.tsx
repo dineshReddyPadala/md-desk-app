@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Box, TextField, Button, Paper, Typography, Alert, InputAdornment } from '@mui/material';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
@@ -76,10 +76,15 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              sx={{ mb: 2 }}
+              sx={{ mb: 1 }}
               required
               InputProps={{ startAdornment: <InputAdornment position="start"><LockOutlinedIcon sx={{ color: 'action.active' }} /></InputAdornment> }}
             />
+            <Box sx={{ textAlign: 'right', mb: 2 }}>
+              <Typography component={Link} to="/forgot-password" variant="body2" color="primary.main">
+                Forgot password?
+              </Typography>
+            </Box>
             <Button type="submit" fullWidth variant="contained" size="large" disabled={isLoading} sx={{ py: 1.5 }}>
               {isLoading ? 'Signing in…' : 'Sign In'}
             </Button>

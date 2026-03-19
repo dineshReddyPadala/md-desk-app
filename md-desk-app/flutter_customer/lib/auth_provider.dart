@@ -71,10 +71,38 @@ class AuthProvider extends ChangeNotifier {
     await client.post('/auth/send-otp', {'email': email});
   }
 
-  /// Register with OTP (step 2). Data must include name, email, otp, password, confirmPassword; optional phone, city.
+  /// Register with OTP (step 2). Data must include name, email, otp, password, confirmPassword; optional phone, city, company.
   Future<void> register(Map<String, String> data) async {
     final client = ApiClient(baseUrl: _baseUrl);
     final res = await client.post('/auth/register', data);
+    final t = res['token'] as String?;
+    if (t == null) throw Exception('No token');
+    await _saveToken(t);
+    user = res['user'] as Map<String, dynamic>?;
+  }
+
+  /// Request password reset email.
+  Future<void> forgotPassword(String email) async {
+    final client = ApiClient(baseUrl: _baseUrl);
+    await client.post('/auth/forgot-password', {'email': email.trim()});
+  }
+
+  /// Reset password with token from email link.
+  Future<void> resetPassword(String token, String newPassword) async {
+    final client = ApiClient(baseUrl: _baseUrl);
+    await client.post('/auth/reset-password', {'token': token, 'newPassword': newPassword});
+  }
+
+  /// Send OTP to email for login (no password).
+  Future<void> sendLoginOtp(String email) async {
+    final client = ApiClient(baseUrl: _baseUrl);
+    await client.post('/auth/send-login-otp', {'email': email.trim()});
+  }
+
+  /// Verify login OTP and sign in.
+  Future<void> loginWithOtp(String email, String otp) async {
+    final client = ApiClient(baseUrl: _baseUrl);
+    final res = await client.post('/auth/verify-login-otp', {'email': email.trim(), 'otp': otp});
     final t = res['token'] as String?;
     if (t == null) throw Exception('No token');
     await _saveToken(t);

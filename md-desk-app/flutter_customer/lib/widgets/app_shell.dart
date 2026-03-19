@@ -18,7 +18,7 @@ class _AppShellState extends State<AppShell> {
 
   static const _navItems = [
     (path: '/dashboard', label: 'Dashboard', icon: Icons.dashboard),
-    (path: '/raise-complaint', label: 'Raise Complaint', icon: Icons.report_problem),
+    (path: '/complaints', label: 'Complaints', icon: Icons.report_problem),
     (path: '/track', label: 'Track Complaint', icon: Icons.track_changes),
     (path: '/message-md', label: 'Message MD', icon: Icons.message),
     (path: '/products', label: 'Products', icon: Icons.inventory),
@@ -131,6 +131,7 @@ class _AppShellState extends State<AppShell> {
     final email = user?['email'] as String? ?? '—';
     final phone = user?['phone'] as String?;
     final city = user?['city'] as String?;
+    final company = user?['company'] as String?;
     showModalBottomSheet(
       context: context,
       builder: (ctx) => SafeArea(
@@ -144,6 +145,7 @@ class _AppShellState extends State<AppShell> {
               const SizedBox(height: 16),
               Text(name, style: Theme.of(ctx).textTheme.titleMedium),
               Text(email, style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(color: Theme.of(ctx).colorScheme.outline)),
+              if (company != null && company.toString().isNotEmpty) Text(company.toString(), style: Theme.of(ctx).textTheme.bodyMedium),
               if (phone != null && phone.toString().isNotEmpty) Text(phone.toString(), style: Theme.of(ctx).textTheme.bodyMedium),
               if (city != null && city.toString().isNotEmpty) Text(city.toString(), style: Theme.of(ctx).textTheme.bodyMedium),
               const SizedBox(height: 24),

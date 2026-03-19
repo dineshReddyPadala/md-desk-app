@@ -13,7 +13,9 @@ const _stepColors = [
 ];
 
 class TrackComplaintScreen extends StatefulWidget {
-  const TrackComplaintScreen({super.key});
+  const TrackComplaintScreen({super.key, this.initialComplaintId});
+
+  final String? initialComplaintId;
 
   @override
   State<TrackComplaintScreen> createState() => _TrackComplaintScreenState();
@@ -25,6 +27,15 @@ class _TrackComplaintScreenState extends State<TrackComplaintScreen> {
   Map<String, dynamic>? _complaint;
   String? _error;
   bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialComplaintId != null && widget.initialComplaintId!.isNotEmpty) {
+      _complaintIdController.text = widget.initialComplaintId!;
+      WidgetsBinding.instance.addPostFrameCallback((_) => _track());
+    }
+  }
 
   @override
   void dispose() {

@@ -24,7 +24,7 @@ async function parseMultipartComplaint(req, reply) {
       product_used: data.product_used,
       project_location: data.project_location,
       description: data.description,
-      priority: data.priority || 'medium',
+      category: data.category || 'PRODUCT',
     };
     req.fileUrls = fileUrls;
   }

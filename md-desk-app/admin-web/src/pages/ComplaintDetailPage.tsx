@@ -23,6 +23,7 @@ export default function ComplaintDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<string>('');
+  const [priority, setPriority] = useState<string>('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['complaint', id],
@@ -31,7 +32,7 @@ export default function ComplaintDetailPage() {
   });
 
   const updateStatus = useMutation({
-    mutationFn: (s: string) => complaintsApi.updateStatus(id!, s),
+    mutationFn: (payload: { status: string; priority?: string }) => complaintsApi.updateStatus(id!, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['complaint', id] });
       queryClient.invalidateQueries({ queryKey: ['admin-complaints'] });
@@ -43,6 +44,7 @@ export default function ComplaintDetailPage() {
     complaintId: string;
     status: string;
     priority: string;
+    category?: string;
     productUsed: string;
     projectLocation: string;
     description: string;
@@ -80,8 +82,8 @@ export default function ComplaintDetailPage() {
             <Typography variant="body2">{displayPhone} · {displayCity}</Typography>
           </Grid>
           <Grid item xs={12} md={6}>
-            <Typography color="textSecondary">Product / Location</Typography>
-            <Typography>{complaint.productUsed} · {complaint.projectLocation}</Typography>
+            <Typography color="textSecondary">Category / Product / Location</Typography>
+            <Typography>{complaint.category ? `${complaint.category} · ` : ''}{complaint.productUsed} · {complaint.projectLocation}</Typography>
           </Grid>
           <Grid item xs={12}>
             <Typography color="textSecondary">Description</Typography>
@@ -95,26 +97,35 @@ export default function ComplaintDetailPage() {
       </Paper>
       <Paper sx={{ p: 3, mb: 2 }}>
         <Typography variant="h6" gutterBottom>
-          Update Status
+          Update Status & Priority
         </Typography>
-        <FormControl size="small" sx={{ minWidth: 200 }}>
-          <InputLabel>Status</InputLabel>
-          <Select value={status || complaint.status} label="Status" onChange={(e) => setStatus(e.target.value)}>
-            <MenuItem value="RECEIVED">Received</MenuItem>
-            <MenuItem value="UNDER_REVIEW">Under Review</MenuItem>
-            <MenuItem value="IN_PROGRESS">In Progress</MenuItem>
-            <MenuItem value="RESOLVED">Resolved</MenuItem>
-          </Select>
-        </FormControl>
-        <Button
-          variant="contained"
-          sx={{ ml: 2 }}
-          disabled={!status || status === complaint.status || updateStatus.isPending}
-          onClick={() => status && updateStatus.mutate(status)}
-        >
-          Update
-        </Button>
-        {updateStatus.isSuccess && <Alert severity="success" sx={{ mt: 2 }}>Status updated.</Alert>}
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
+          <FormControl size="small" sx={{ minWidth: 200 }}>
+            <InputLabel>Status</InputLabel>
+            <Select value={status || complaint.status} label="Status" onChange={(e) => setStatus(e.target.value)}>
+              <MenuItem value="RECEIVED">Received</MenuItem>
+              <MenuItem value="UNDER_REVIEW">Under Review</MenuItem>
+              <MenuItem value="IN_PROGRESS">In Progress</MenuItem>
+              <MenuItem value="RESOLVED">Resolved</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 200 }}>
+            <InputLabel>Priority</InputLabel>
+            <Select value={priority || complaint.priority} label="Priority" onChange={(e) => setPriority(e.target.value)}>
+              <MenuItem value="HIGH">High</MenuItem>
+              <MenuItem value="MEDIUM">Medium</MenuItem>
+              <MenuItem value="LOW">Low</MenuItem>
+            </Select>
+          </FormControl>
+          <Button
+            variant="contained"
+            disabled={updateStatus.isPending || ((status || complaint.status) === complaint.status && (priority || complaint.priority) === complaint.priority)}
+            onClick={() => updateStatus.mutate({ status: status || complaint.status, priority: priority || complaint.priority })}
+          >
+            Update
+          </Button>
+        </Box>
+        {updateStatus.isSuccess && <Alert severity="success" sx={{ mt: 2 }}>Status and priority updated.</Alert>}
       </Paper>
       {complaint.media && complaint.media.length > 0 && (
         <Paper sx={{ p: 3 }}>

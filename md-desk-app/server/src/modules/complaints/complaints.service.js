@@ -9,14 +9,20 @@ function generateComplaintId() {
 
 async function createComplaint(prisma, userId, data, fileUrls = []) {
   const complaintId = generateComplaintId();
+  const category = (data.category || 'PRODUCT').toUpperCase();
+  if (!['PRODUCT', 'SERVICE', 'DELIVERY', 'TECHNICAL'].includes(category)) {
+    const err = new Error('Invalid category');
+    err.statusCode = 400;
+    throw err;
+  }
   const complaint = await prisma.complaint.create({
     data: {
       complaintId,
       userId,
-      productUsed: data.product_used,
+      category,
+      productUsed: data.product_used && String(data.product_used).trim() ? String(data.product_used).trim() : '—',
       projectLocation: data.project_location,
       description: data.description,
-      priority: (data.priority || 'MEDIUM').toUpperCase(),
       name: data.name,
       phone: data.phone,
       city: data.city,
@@ -98,16 +104,23 @@ async function getHighPriority(prisma, page = 1, limit = 20) {
   return adminListComplaints(prisma, page, limit, null, 'HIGH');
 }
 
-async function updateStatus(prisma, id, status) {
-  const valid = ['RECEIVED', 'UNDER_REVIEW', 'IN_PROGRESS', 'RESOLVED'];
-  if (!valid.includes(status.toUpperCase())) {
+async function updateStatus(prisma, id, status, priority = null) {
+  const validStatus = ['RECEIVED', 'UNDER_REVIEW', 'IN_PROGRESS', 'RESOLVED'];
+  if (!validStatus.includes(status.toUpperCase())) {
     const err = new Error('Invalid status');
     err.statusCode = 400;
     throw err;
   }
+  const data = { status: status.toUpperCase() };
+  if (priority != null && priority !== '') {
+    const validPriority = ['HIGH', 'MEDIUM', 'LOW'];
+    if (validPriority.includes(priority.toUpperCase())) {
+      data.priority = priority.toUpperCase();
+    }
+  }
   return prisma.complaint.update({
     where: { id },
-    data: { status: status.toUpperCase() },
+    data,
     include: { media: true, user: true },
   });
 }

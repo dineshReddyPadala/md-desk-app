@@ -1,18 +1,27 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Box, TextField, Button, Paper, Typography, Alert, InputAdornment } from '@mui/material';
+import { Box, TextField, Button, Paper, Typography, Alert, InputAdornment, Tabs, Tab } from '@mui/material';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import PinOutlinedIcon from '@mui/icons-material/PinOutlined';
 import { useAuth } from '../hooks/useAuth';
+import { authApi } from '../api/endpoints';
+
+type LoginTab = 'password' | 'otp';
 
 export default function LoginPage() {
+  const [tab, setTab] = useState<LoginTab>('password');
   const [emailOrPhone, setEmailOrPhone] = useState('');
   const [password, setPassword] = useState('');
+  const [otpEmail, setOtpEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
   const [error, setError] = useState('');
-  const { login, isLoading } = useAuth();
+  const { login, loginWithOtp, isLoading } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     try {
@@ -21,6 +30,42 @@ export default function LoginPage() {
     } catch (err: unknown) {
       setError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Login failed');
     }
+  };
+
+  const handleSendLoginOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!otpEmail.trim()) {
+      setError('Please enter your email');
+      return;
+    }
+    setSendingOtp(true);
+    try {
+      await authApi.sendLoginOtp(otpEmail.trim());
+      setOtpSent(true);
+    } catch (err: unknown) {
+      setError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to send OTP');
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleOtpSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    try {
+      await loginWithOtp(otpEmail.trim(), otp);
+      navigate('/dashboard');
+    } catch (err: unknown) {
+      setError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Invalid or expired OTP');
+    }
+  };
+
+  const switchTab = (t: LoginTab) => {
+    setTab(t);
+    setError('');
+    setOtpSent(false);
+    setOtp('');
   };
 
   return (
@@ -53,38 +98,106 @@ export default function LoginPage() {
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Sign in to raise complaints, track status, and message MD Desk.
           </Typography>
+          <Tabs value={tab} onChange={(_, v) => switchTab(v as LoginTab)} sx={{ mb: 2 }} variant="fullWidth">
+            <Tab label="Password" value="password" />
+            <Tab label="Email OTP" value="otp" />
+          </Tabs>
           {error && (
             <Alert severity="error" sx={{ mb: 2, textAlign: 'left' }}>
               {error}
             </Alert>
           )}
-          <form onSubmit={handleSubmit}>
-            <TextField
-              fullWidth
-              label="Email or phone"
-              type="text"
-              value={emailOrPhone}
-              onChange={(e) => setEmailOrPhone(e.target.value)}
-              placeholder="e.g. you@example.com or 9876543210"
-              sx={{ mb: 2 }}
-              required
-              autoComplete="username"
-              InputProps={{ startAdornment: <InputAdornment position="start"><PersonOutlineIcon sx={{ color: 'action.active' }} /></InputAdornment> }}
-            />
-            <TextField
-              fullWidth
-              label="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              sx={{ mb: 2 }}
-              required
-              InputProps={{ startAdornment: <InputAdornment position="start"><LockOutlinedIcon sx={{ color: 'action.active' }} /></InputAdornment> }}
-            />
-            <Button type="submit" fullWidth variant="contained" size="large" disabled={isLoading} sx={{ py: 1.5 }}>
-              {isLoading ? 'Signing in…' : 'Sign In'}
-            </Button>
-          </form>
+
+          {tab === 'password' && (
+            <form onSubmit={handlePasswordSubmit}>
+              <TextField
+                fullWidth
+                label="Email or phone"
+                type="text"
+                value={emailOrPhone}
+                onChange={(e) => setEmailOrPhone(e.target.value)}
+                placeholder="e.g. you@example.com or 9876543210"
+                sx={{ mb: 2 }}
+                required
+                autoComplete="username"
+                InputProps={{ startAdornment: <InputAdornment position="start"><PersonOutlineIcon sx={{ color: 'action.active' }} /></InputAdornment> }}
+              />
+              <TextField
+                fullWidth
+                label="Password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                sx={{ mb: 1 }}
+                required
+                InputProps={{ startAdornment: <InputAdornment position="start"><LockOutlinedIcon sx={{ color: 'action.active' }} /></InputAdornment> }}
+              />
+              <Box sx={{ textAlign: 'right', mb: 2 }}>
+                <Typography component={Link} to="/forgot-password" variant="body2" color="primary.main">
+                  Forgot password?
+                </Typography>
+              </Box>
+              <Button type="submit" fullWidth variant="contained" size="large" disabled={isLoading} sx={{ py: 1.5 }}>
+                {isLoading ? 'Signing in…' : 'Sign In'}
+              </Button>
+            </form>
+          )}
+
+          {tab === 'otp' && (
+            <>
+              {!otpSent ? (
+                <form onSubmit={handleSendLoginOtp}>
+                  <TextField
+                    fullWidth
+                    label="Email"
+                    type="email"
+                    value={otpEmail}
+                    onChange={(e) => setOtpEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    sx={{ mb: 2 }}
+                    required
+                    InputProps={{ startAdornment: <InputAdornment position="start"><PersonOutlineIcon sx={{ color: 'action.active' }} /></InputAdornment> }}
+                  />
+                  <Button type="submit" fullWidth variant="contained" size="large" disabled={sendingOtp} sx={{ py: 1.5 }}>
+                    {sendingOtp ? 'Sending…' : 'Send OTP to email'}
+                  </Button>
+                  <Typography variant="caption" display="block" sx={{ mt: 1.5 }} color="text.secondary">
+                    Phone OTP (SMS) coming soon.
+                  </Typography>
+                </form>
+              ) : (
+                <form onSubmit={handleOtpSubmit}>
+                  <TextField
+                    fullWidth
+                    label="Email"
+                    type="email"
+                    value={otpEmail}
+                    disabled
+                    sx={{ mb: 2 }}
+                    InputProps={{ startAdornment: <InputAdornment position="start"><PersonOutlineIcon sx={{ color: 'action.active' }} /></InputAdornment> }}
+                  />
+                  <TextField
+                    fullWidth
+                    label="OTP (6 digits)"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="Enter code from email"
+                    sx={{ mb: 2 }}
+                    required
+                    inputProps={{ maxLength: 6 }}
+                    InputProps={{ startAdornment: <InputAdornment position="start"><PinOutlinedIcon sx={{ color: 'action.active' }} /></InputAdornment> }}
+                  />
+                  <Button type="submit" fullWidth variant="contained" size="large" disabled={isLoading} sx={{ py: 1.5 }}>
+                    {isLoading ? 'Verifying…' : 'Verify & Sign In'}
+                  </Button>
+                  <Button fullWidth variant="text" size="small" sx={{ mt: 1 }} onClick={() => { setOtpSent(false); setOtp(''); setError(''); }}>
+                    Use a different email
+                  </Button>
+                </form>
+              )}
+            </>
+          )}
+
           <Typography sx={{ mt: 2 }} component={Link} to="/register" color="primary.main" fontWeight={500}>
             Don&apos;t have an account? Register
           </Typography>

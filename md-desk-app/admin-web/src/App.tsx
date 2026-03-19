@@ -2,6 +2,8 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import Layout from './layouts/Layout';
 import LoginPage from './pages/LoginPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import ComplaintsPage from './pages/ComplaintsPage';
 import ComplaintDetailPage from './pages/ComplaintDetailPage';
@@ -9,6 +11,8 @@ import MessagesPage from './pages/MessagesPage';
 import ReportsPage from './pages/ReportsPage';
 import ProductsPage from './pages/ProductsPage';
 import DealersPage from './pages/DealersPage';
+import ProjectsPage from './pages/ProjectsPage';
+import ClientsPage from './pages/ClientsPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { token, isLoading } = useAuth();
@@ -21,6 +25,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route
         path="/"
         element={
@@ -35,8 +41,10 @@ export default function App() {
         <Route path="complaints/:id" element={<ComplaintDetailPage />} />
         <Route path="messages" element={<MessagesPage />} />
         <Route path="reports" element={<ReportsPage />} />
+        <Route path="projects" element={<ProjectsPage />} />
         <Route path="products" element={<ProductsPage />} />
         <Route path="dealers" element={<DealersPage />} />
+        <Route path="clients" element={<ClientsPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
