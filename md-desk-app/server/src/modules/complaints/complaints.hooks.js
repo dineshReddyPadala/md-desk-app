@@ -4,18 +4,33 @@ async function parseMultipartComplaint(req, reply) {
   if (req.isMultipart && req.isMultipart()) {
     const data = {};
     const fileUrls = [];
-    const parts = req.parts();
-    for await (const part of parts) {
-      if (part.type === 'field') {
-        data[part.fieldname] = part.value;
-      } else if (part.type === 'file') {
-        const buffer = await part.toBuffer();
-        const mimetype = part.mimetype;
-        if (s3Service.isAllowedType(mimetype)) {
-          const url = await s3Service.uploadToS3(buffer, mimetype, 'complaints');
-          fileUrls.push({ file_url: url, file_type: mimetype });
+    try {
+      const parts = req.parts();
+      for await (const part of parts) {
+        if (part.type === 'field') {
+          data[part.fieldname] = part.value;
+        } else if (part.type === 'file') {
+          const buffer = await part.toBuffer();
+          const mimetype = part.mimetype;
+          try {
+            const url = await s3Service.uploadToS3(buffer, mimetype, 'complaints', {
+              filename: part.filename,
+              scope: 'media',
+            });
+            fileUrls.push({ file_url: url, file_type: mimetype });
+          } catch (e) {
+            if (e.statusCode === 400) {
+              return reply.status(400).send({ success: false, message: e.message });
+            }
+            throw e;
+          }
         }
       }
+    } catch (e) {
+      if (e.statusCode === 400 && e.message) {
+        return reply.status(400).send({ success: false, message: e.message });
+      }
+      throw e;
     }
     req.body = {
       name: data.name,

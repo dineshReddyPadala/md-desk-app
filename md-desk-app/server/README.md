@@ -141,8 +141,8 @@ Protected routes require header: `Authorization: Bearer <JWT>`.
 
 | Method | Endpoint | Auth | Description |
 |--------|----------|------|-------------|
-| POST | `/upload` | JWT | Upload a single file. Multipart field: `file`. Allowed: jpg, png, pdf. Returns `file_url`, `file_type`. |
-| POST | `/upload/multiple` | JWT | Upload multiple files. Returns `files` array with `file_url`, `file_type`. |
+| POST | `/upload` | JWT | Multipart field: `file`. Query `scope=media` (default) or `scope=image`. **media**: documents (PDF, Office), images, video, audio, ZIP. **image**: JPEG/PNG/GIF/WebP/SVG only (products/dealers). Invalid type → `400` with a clear message. |
+| POST | `/upload/multiple` | JWT | Same `scope` query. Rejected files return `400` with `failures` details. |
 
 ### Messages
 

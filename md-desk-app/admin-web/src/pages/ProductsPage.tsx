@@ -26,6 +26,7 @@ import ImageIcon from '@mui/icons-material/Image';
 import { productsApi, uploadApi, type ProductDto } from '../api/endpoints';
 import { getBackendErrorMessage } from '../api/getBackendErrorMessage';
 import { useStaffRole } from '../hooks/useStaffRole';
+import { ACCEPT_IMAGES_ONLY, validateFilesImageOnly } from '../constants/uploadAccept';
 
 export default function ProductsPage() {
   const { canMutate } = useStaffRole();
@@ -35,6 +36,7 @@ export default function ProductsPage() {
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFileError, setImageFileError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -71,6 +73,7 @@ export default function ProductsPage() {
     setDescription('');
     setImageUrl('');
     setImageFile(null);
+    setImageFileError(null);
   };
 
   const handleOpenAdd = () => {
@@ -79,6 +82,7 @@ export default function ProductsPage() {
     setDescription('');
     setImageUrl('');
     setImageFile(null);
+    setImageFileError(null);
     setOpen(true);
   };
 
@@ -88,12 +92,19 @@ export default function ProductsPage() {
     setDescription(p.description || '');
     setImageUrl(p.imageUrl || '');
     setImageFile(null);
+    setImageFileError(null);
     setOpen(true);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const err = validateFilesImageOnly([file]);
+    setImageFileError(err);
+    if (err) {
+      e.target.value = '';
+      return;
+    }
     setImageFile(file);
     setImageUrl('');
   };
@@ -102,9 +113,10 @@ export default function ProductsPage() {
     let url = imageUrl;
     if (imageFile) {
       try {
-        const res = await uploadApi.upload(imageFile);
+        const res = await uploadApi.upload(imageFile, { scope: 'image' });
         url = res.data.file_url;
-      } catch {
+      } catch (err: unknown) {
+        setImageFileError(getBackendErrorMessage(err));
         return;
       }
     }
@@ -174,13 +186,14 @@ export default function ProductsPage() {
             <TextField fullWidth label="Name" value={name} onChange={(e) => setName(e.target.value)} required />
             <TextField fullWidth label="Description" value={description} onChange={(e) => setDescription(e.target.value)} multiline rows={2} />
             <Box>
-              <Typography variant="body2" color="text.secondary" gutterBottom>Image (optional)</Typography>
+              <Typography variant="body2" color="text.secondary" gutterBottom>Image (optional) — JPEG, PNG, GIF, WebP, SVG only</Typography>
               <Button component="label" variant="outlined" size="small" sx={{ mr: 2 }}>
                 {imageFile ? imageFile.name : 'Choose image'}
-                <input type="file" accept="image/*" hidden onChange={handleImageChange} />
+                <input type="file" accept={ACCEPT_IMAGES_ONLY} hidden onChange={handleImageChange} />
               </Button>
               {imageUrl && !imageFile && <Typography variant="caption" display="block" sx={{ mt: 1 }}>Current image set</Typography>}
               {!imageUrl && !imageFile && <Typography variant="caption" display="block" sx={{ mt: 1 }}>No image — placeholder will be shown in list</Typography>}
+              {imageFileError && <Alert severity="error" sx={{ mt: 1 }}>{imageFileError}</Alert>}
             </Box>
             {(createMutation.isError || updateMutation.isError) && (
               <Alert severity="error">

@@ -16,6 +16,7 @@ import {
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { complaintsApi, dashboardApi } from '../api/endpoints';
+import { ACCEPT_FULL_MEDIA, validateFilesFullMedia } from '../constants/uploadAccept';
 
 export default function RaiseComplaintPage() {
   const navigate = useNavigate();
@@ -68,6 +69,13 @@ export default function RaiseComplaintPage() {
       setLocalError('Project location is required.');
       return;
     }
+    if (files.length > 0) {
+      const fileErr = validateFilesFullMedia(files);
+      if (fileErr) {
+        setLocalError(fileErr);
+        return;
+      }
+    }
     createMutation.mutate();
   };
 
@@ -75,7 +83,7 @@ export default function RaiseComplaintPage() {
     <Box>
       <Typography variant="h4" fontWeight={700} gutterBottom>Raise Complaint</Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        Submit product or service issues. You will receive a unique ID to track status.
+        You will receive a unique ID to track status.
       </Typography>
 
       <Paper sx={{ p: 3, borderRadius: 2 }} variant="outlined">
@@ -136,10 +144,24 @@ export default function RaiseComplaintPage() {
           <Box sx={{ mb: 3 }}>
             <Button component="label" variant="outlined" startIcon={<CloudUploadIcon />} sx={{ mr: 2 }}>
               Choose files
-              <input type="file" accept=".jpg,.jpeg,.png,.pdf" multiple hidden onChange={(e) => setFiles(e.target.files ? Array.from(e.target.files) : [])} />
+              <input
+                type="file"
+                accept={ACCEPT_FULL_MEDIA}
+                multiple
+                hidden
+                onChange={(e) => {
+                  const next = e.target.files ? Array.from(e.target.files) : [];
+                  const err = next.length ? validateFilesFullMedia(next) : null;
+                  setLocalError(err);
+                  if (!err) setFiles(next);
+                  e.target.value = '';
+                }}
+              />
             </Button>
             {files.length > 0 && <Typography variant="body2" color="text.secondary">{files.length} file(s) selected</Typography>}
-            <FormHelperText>JPG, PNG or PDF. Optional.</FormHelperText>
+            <FormHelperText>
+              Optional. PDF, Word, Excel, PowerPoint, TXT, CSV, images, video, audio, ZIP — invalid types show an error here before submit.
+            </FormHelperText>
           </Box>
 
           {(localError || createMutation.isError) && (

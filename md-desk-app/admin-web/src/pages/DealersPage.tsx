@@ -28,6 +28,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import { dealersApi, uploadApi, type DealerDto } from '../api/endpoints';
 import { getBackendErrorMessage } from '../api/getBackendErrorMessage';
 import { useStaffRole } from '../hooks/useStaffRole';
+import { ACCEPT_IMAGES_ONLY, validateFilesImageOnly } from '../constants/uploadAccept';
 
 export default function DealersPage() {
   const { canMutate } = useStaffRole();
@@ -38,6 +39,7 @@ export default function DealersPage() {
   const [phone, setPhone] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFileError, setImageFileError] = useState<string | null>(null);
   const [bulkFile, setBulkFile] = useState<File | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -104,6 +106,7 @@ export default function DealersPage() {
     setPhone('');
     setImageUrl('');
     setImageFile(null);
+    setImageFileError(null);
   };
 
   const handleOpenAdd = () => {
@@ -113,6 +116,7 @@ export default function DealersPage() {
     setPhone('');
     setImageUrl('');
     setImageFile(null);
+    setImageFileError(null);
     setOpen(true);
   };
 
@@ -123,24 +127,31 @@ export default function DealersPage() {
     setPhone(d.phone || '');
     setImageUrl(d.imageUrl || '');
     setImageFile(null);
+    setImageFileError(null);
     setOpen(true);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      setImageUrl('');
+    if (!file) return;
+    const err = validateFilesImageOnly([file]);
+    setImageFileError(err);
+    if (err) {
+      e.target.value = '';
+      return;
     }
+    setImageFile(file);
+    setImageUrl('');
   };
 
   const doSubmit = async () => {
     let url = imageUrl;
     if (imageFile) {
       try {
-        const res = await uploadApi.upload(imageFile);
+        const res = await uploadApi.upload(imageFile, { scope: 'image' });
         url = res.data.file_url;
-      } catch {
+      } catch (err: unknown) {
+        setImageFileError(getBackendErrorMessage(err));
         return;
       }
     }
@@ -228,13 +239,14 @@ export default function DealersPage() {
             <TextField fullWidth label="City" value={city} onChange={(e) => setCity(e.target.value)} />
             <TextField fullWidth label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
             <Box>
-              <Typography variant="body2" color="text.secondary" gutterBottom>Image (optional)</Typography>
+              <Typography variant="body2" color="text.secondary" gutterBottom>Image (optional) — JPEG, PNG, GIF, WebP, SVG only</Typography>
               <Button component="label" variant="outlined" size="small" sx={{ mr: 2 }}>
                 {imageFile ? imageFile.name : 'Choose image'}
-                <input type="file" accept="image/*" hidden onChange={handleImageChange} />
+                <input type="file" accept={ACCEPT_IMAGES_ONLY} hidden onChange={handleImageChange} />
               </Button>
               {imageUrl && !imageFile && <Typography variant="caption" display="block" sx={{ mt: 1 }}>Current image set</Typography>}
               {!imageUrl && !imageFile && <Typography variant="caption" display="block" sx={{ mt: 1 }}>No image — placeholder will be shown in list</Typography>}
+              {imageFileError && <Alert severity="error" sx={{ mt: 1 }}>{imageFileError}</Alert>}
             </Box>
             {(createMutation.isError || updateMutation.isError) && (
               <Alert severity="error">

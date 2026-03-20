@@ -45,6 +45,7 @@ import {
 } from '../api/endpoints';
 import { getBackendErrorMessage } from '../api/getBackendErrorMessage';
 import { useStaffRole } from '../hooks/useStaffRole';
+import { ACCEPT_FULL_MEDIA, validateFilesFullMedia } from '../constants/uploadAccept';
 
 const STATUS_OPTIONS: { value: ProjectDto['status']; label: string }[] = [
   { value: 'PENDING', label: 'Pending' },
@@ -209,7 +210,7 @@ export default function ProjectsPage() {
     let documentUrl: string | undefined;
     if (editDocumentFile) {
       try {
-        const res = await uploadApi.upload(editDocumentFile);
+        const res = await uploadApi.upload(editDocumentFile, { scope: 'media' });
         documentUrl = res.data.file_url;
       } catch {
         setEditError('File upload failed');
@@ -225,7 +226,7 @@ export default function ProjectsPage() {
     let documentUrl: string | undefined;
     if (documentFile) {
       try {
-        const res = await uploadApi.upload(documentFile);
+        const res = await uploadApi.upload(documentFile, { scope: 'media' });
         documentUrl = res.data.file_url;
       } catch {
         setFormError('File upload failed');
@@ -292,10 +293,30 @@ export default function ProjectsPage() {
               disableCloseOnSelect
             />
             <Box>
-              <Typography variant="body2" color="text.secondary" gutterBottom>File / Document upload (optional)</Typography>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                File / Document (optional) — PDF, Office, images, video, audio, ZIP
+              </Typography>
               <Button component="label" variant="outlined" size="small" startIcon={<UploadFileIcon />}>
                 {documentFile ? documentFile.name : 'Choose file'}
-                <input type="file" hidden onChange={(e) => setDocumentFile(e.target.files?.[0] || null)} />
+                <input
+                  type="file"
+                  accept={ACCEPT_FULL_MEDIA}
+                  hidden
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] || null;
+                    if (f) {
+                      const err = validateFilesFullMedia([f]);
+                      if (err) {
+                        setFormError(err);
+                        e.target.value = '';
+                        setDocumentFile(null);
+                        return;
+                      }
+                    }
+                    setFormError(null);
+                    setDocumentFile(f);
+                  }}
+                />
               </Button>
             </Box>
             <FormControl fullWidth>
@@ -363,7 +384,25 @@ export default function ProjectsPage() {
             )}
             <Button component="label" variant="outlined" size="small" startIcon={<UploadFileIcon />}>
               {editDocumentFile ? editDocumentFile.name : 'Replace document'}
-              <input type="file" hidden onChange={(e) => setEditDocumentFile(e.target.files?.[0] || null)} />
+              <input
+                type="file"
+                accept={ACCEPT_FULL_MEDIA}
+                hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0] || null;
+                  if (f) {
+                    const err = validateFilesFullMedia([f]);
+                    if (err) {
+                      setEditError(err);
+                      e.target.value = '';
+                      setEditDocumentFile(null);
+                      return;
+                    }
+                  }
+                  setEditError(null);
+                  setEditDocumentFile(f);
+                }}
+              />
             </Button>
           </Box>
           {(editError || updateProjectMutation.isError) && (

@@ -1,10 +1,42 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../auth_provider.dart';
 import '../api/client.dart';
+
+/// Allowed extensions for complaint attachments (aligned with server `media` scope).
+const _mediaExtensions = <String>[
+  'pdf',
+  'doc',
+  'docx',
+  'xls',
+  'xlsx',
+  'ppt',
+  'pptx',
+  'txt',
+  'csv',
+  'jpg',
+  'jpeg',
+  'png',
+  'gif',
+  'webp',
+  'svg',
+  'mp4',
+  'avi',
+  'mov',
+  'mkv',
+  'webm',
+  'mp3',
+  'wav',
+  'aac',
+  'ogg',
+  'zip',
+];
+
+const _attachmentsHelp =
+    'PDF, Word, Excel, PowerPoint, TXT, CSV, images, video, audio, ZIP. Invalid types show an error here.';
 
 class RaiseComplaintScreen extends StatefulWidget {
   const RaiseComplaintScreen({super.key});
@@ -24,7 +56,7 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
   String? _selectedProjectId;
   List<Map<String, dynamic>> _activeProjects = [];
   bool _loadingProjects = true;
-  List<XFile> _pickedFiles = [];
+  List<PlatformFile> _pickedFiles = [];
   String? _error;
   bool _submitting = false;
 
@@ -64,11 +96,33 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
     }
   }
 
-  Future<void> _pickImages() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickMultiImage();
-    if (picked.isEmpty) return;
-    if (mounted) setState(() => _pickedFiles = [..._pickedFiles, ...picked]);
+  Future<void> _pickFiles() async {
+    final result = await FilePicker.platform.pickFiles(
+      allowMultiple: true,
+      type: FileType.custom,
+      allowedExtensions: _mediaExtensions,
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+
+    for (final f in result.files) {
+      final ext = (f.extension ?? '').toLowerCase();
+      if (!_mediaExtensions.contains(ext)) {
+        if (mounted) {
+          setState(() {
+            _error =
+                '“${f.name}” is not allowed. $_attachmentsHelp';
+          });
+        }
+        return;
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _error = null;
+        _pickedFiles = result.files;
+      });
+    }
   }
 
   Future<void> _submit() async {
@@ -129,10 +183,19 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
       List<http.MultipartFile>? files;
       if (_pickedFiles.isNotEmpty) {
         files = [];
-        for (final x in _pickedFiles) {
-          final bytes = await x.readAsBytes();
-          final fname = x.name;
-          files.add(http.MultipartFile.fromBytes('photos', bytes, filename: fname.isNotEmpty ? fname : 'image.jpg'));
+        for (final f in _pickedFiles) {
+          final bytes = f.bytes;
+          if (bytes == null) {
+            if (mounted) {
+              setState(() {
+                _error = 'Could not read “${f.name}”. Try a smaller file or pick again.';
+                _submitting = false;
+              });
+            }
+            return;
+          }
+          final fname = f.name.isNotEmpty ? f.name : 'attachment';
+          files.add(http.MultipartFile.fromBytes('photos', bytes, filename: fname));
         }
       }
       await client.postMultipart('/complaints', fields: fields, files: files);
@@ -233,9 +296,13 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
                     Text('Attachments', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, color: theme.colorScheme.primary)),
                     const SizedBox(height: 8),
                     OutlinedButton.icon(
-                      onPressed: _pickImages,
+                      onPressed: _pickFiles,
                       icon: const Icon(Icons.upload_file),
                       label: const Text('Choose files'),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(_attachmentsHelp, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline)),
                     ),
                     if (_pickedFiles.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text('${_pickedFiles.length} file(s) selected', style: theme.textTheme.bodySmall)),
                     const SizedBox(height: 24),

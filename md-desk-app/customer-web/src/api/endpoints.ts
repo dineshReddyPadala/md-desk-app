@@ -53,11 +53,15 @@ export const dealersApi = {
     api.get<{ success: boolean; dealers: unknown[] }>('/dealers', { params: city ? { city } : {} }),
 };
 
+export type UploadScope = 'media' | 'image';
+
 export const uploadApi = {
-  upload: (file: File) => {
+  upload: (file: File, options?: { scope?: UploadScope }) => {
     const form = new FormData();
     form.append('file', file);
+    const scope = options?.scope ?? 'media';
     return api.post<{ success: boolean; file_url: string; file_type: string }>('/upload', form, {
+      params: { scope },
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
