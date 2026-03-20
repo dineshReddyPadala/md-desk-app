@@ -134,12 +134,10 @@ export default function DashboardPage() {
         width: 'auto',
         maxWidth: { xs: '100%', sm: 320 },
         objectFit: 'contain',
-        objectPosition: 'left center',
-        border: '1px solid rgba(0, 0, 0, 0.12)',
-        borderRadius: 1,
-        boxSizing: 'border-box',
+        objectPosition: 'right center',
         display: 'block',
-        mb: { xs: 2, sm: 0 },
+        flexShrink: 0,
+        alignSelf: { xs: 'flex-end', sm: 'center' },
       }}
     />
   );
@@ -147,8 +145,20 @@ export default function DashboardPage() {
   if (isLoading || !summary) {
     return (
       <Box>
-        {dashboardLogo}
-        <Skeleton variant="text" width={200} height={48} sx={{ mb: 2 }} />
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: { xs: 'stretch', sm: 'center' },
+            justifyContent: 'space-between',
+            gap: 2,
+            mb: 2,
+            width: '100%',
+          }}
+        >
+          <Skeleton variant="text" width={200} height={48} />
+          {dashboardLogo}
+        </Box>
         <Grid container spacing={3}>
           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
             <Grid item xs={12} sm={6} md={4} lg={2} key={i}>
@@ -211,11 +221,12 @@ export default function DashboardPage() {
           display: 'flex',
           flexDirection: { xs: 'column', sm: 'row' },
           alignItems: { xs: 'stretch', sm: 'center' },
+          justifyContent: 'space-between',
           gap: { xs: 2, sm: 3 },
           flexWrap: 'wrap',
+          width: '100%',
         }}
       >
-        {dashboardLogo}
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="h4" fontWeight={700} gutterBottom>
             Dashboard
@@ -224,6 +235,7 @@ export default function DashboardPage() {
             Overview of complaints and key metrics
           </Typography>
         </Box>
+        {dashboardLogo}
       </Box>
 
       {summary.highPriority > 0 && (

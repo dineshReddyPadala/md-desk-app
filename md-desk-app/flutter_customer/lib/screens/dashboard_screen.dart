@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../auth_provider.dart';
+import '../widgets/technopaints_logo.dart';
 
 const _statusOrder = ['RECEIVED', 'UNDER_REVIEW', 'IN_PROGRESS', 'RESOLVED'];
 const _statusLabels = {
@@ -101,10 +102,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('Dashboard', style: theme.textTheme.titleLarge),
-          Text(
-            'Overview of your projects, complaints, and shortcuts',
-            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Dashboard', style: theme.textTheme.titleLarge),
+                    Text(
+                      'Overview of your projects, complaints, and shortcuts',
+                      style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+                    ),
+                  ],
+                ),
+              ),
+              const TechnoPaintsLogo(height: 40, alignment: Alignment.topRight),
+            ],
           ),
           const SizedBox(height: 16),
           if (_error != null)

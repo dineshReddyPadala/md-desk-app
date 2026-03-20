@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../auth_provider.dart';
 import '../api/client.dart';
+import 'technopaints_logo.dart';
 
 /// Shell layout aligned with web: AppBar + Drawer + Profile + Notifications.
 class AppShell extends StatefulWidget {
@@ -187,6 +188,18 @@ class _AppShellState extends State<AppShell> {
       appBar: AppBar(
         title: const Text('MD Desk'),
         actions: [
+          Padding(
+            padding: const EdgeInsets.only(left: 4, right: 2),
+            child: SizedBox(
+              height: 26,
+              width: 108,
+              child: FittedBox(
+                fit: BoxFit.contain,
+                alignment: Alignment.centerRight,
+                child: TechnoPaintsLogo(height: 26, alignment: Alignment.centerRight),
+              ),
+            ),
+          ),
           IconButton(
             icon: Badge(
               label: Text(_unreadCount > 0 ? '$_unreadCount' : ''),
@@ -212,9 +225,23 @@ class _AppShellState extends State<AppShell> {
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(color: Color(0xFF0097D7)),
-              child: Text('MD Desk', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+            DrawerHeader(
+              decoration: const BoxDecoration(color: Color(0xFF0097D7)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Image.asset(
+                    kTechnoPaintsLogoAsset,
+                    height: 36,
+                    fit: BoxFit.contain,
+                    alignment: Alignment.centerLeft,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text('MD Desk', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                ],
+              ),
             ),
             ..._navItems.map((e) {
               return ListTile(

@@ -41,10 +41,16 @@ export default function DashboardPage() {
           display: 'flex',
           flexDirection: { xs: 'column', sm: 'row' },
           alignItems: { xs: 'stretch', sm: 'center' },
+          justifyContent: 'space-between',
           gap: { xs: 2, sm: 3 },
           flexWrap: 'wrap',
+          width: '100%',
         }}
       >
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography variant="h5" gutterBottom sx={{ mb: 0 }}>Dashboard</Typography>
+          <Typography variant="body2" color="text.secondary">Overview of your projects, complaints, and messages</Typography>
+        </Box>
         <Box
           component="img"
           src="/TP-logo-1-1024x164-1.webp"
@@ -54,18 +60,12 @@ export default function DashboardPage() {
             width: 'auto',
             maxWidth: { xs: '100%', sm: 320 },
             objectFit: 'contain',
-            objectPosition: 'left center',
-            border: '1px solid rgba(0, 0, 0, 0.12)',
-            borderRadius: 1,
-            boxSizing: 'border-box',
+            objectPosition: 'right center',
             display: 'block',
-            mb: { xs: 2, sm: 0 },
+            flexShrink: 0,
+            alignSelf: { xs: 'flex-end', sm: 'center' },
           }}
         />
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="h5" gutterBottom sx={{ mb: 0 }}>Dashboard</Typography>
-          <Typography variant="body2" color="text.secondary">Overview of your projects, complaints, and messages</Typography>
-        </Box>
       </Box>
 
       <Grid container spacing={3}>

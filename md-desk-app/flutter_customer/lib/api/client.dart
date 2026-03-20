@@ -27,10 +27,11 @@ class ApiClient {
   }
 
   Future<Map<String, dynamic>> post(String path, [Map<String, dynamic>? body]) async {
+    // Fastify rejects empty body when Content-Type is application/json — send {}.
     final r = await http.post(
       Uri.parse('$baseUrl$path'),
       headers: _headers,
-      body: body != null ? jsonEncode(body) : null,
+      body: jsonEncode(body ?? <String, dynamic>{}),
     );
     return _handleResponse(r);
   }
@@ -39,7 +40,7 @@ class ApiClient {
     final r = await http.patch(
       Uri.parse('$baseUrl$path'),
       headers: _headers,
-      body: body != null ? jsonEncode(body) : null,
+      body: jsonEncode(body ?? <String, dynamic>{}),
     );
     return _handleResponse(r);
   }
