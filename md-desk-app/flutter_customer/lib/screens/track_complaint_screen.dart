@@ -151,7 +151,7 @@ class _ComplaintResult extends StatelessWidget {
     final status = complaint['status'] as String? ?? '';
     final priority = complaint['priority'] as String? ?? '';
     final description = complaint['description'] as String? ?? '';
-    final productUsed = complaint['productUsed'] as String? ?? '';
+    final category = complaint['category'] as String? ?? '';
     final projectLocation = complaint['projectLocation'] as String? ?? '';
     final media = (complaint['media'] as List?)?.cast<Map<String, dynamic>>() ?? [];
     final activeStep = _statusSteps.indexOf(status);
@@ -174,7 +174,10 @@ class _ComplaintResult extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(description, style: theme.textTheme.bodyMedium),
-            Text('$productUsed · $projectLocation', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline)),
+            Text(
+              category.isNotEmpty ? '$category · $projectLocation' : projectLocation,
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+            ),
             if (media.isNotEmpty) ...[
               const SizedBox(height: 12),
               Text('Attachments', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),

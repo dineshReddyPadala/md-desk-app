@@ -21,9 +21,18 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
   final _descriptionController = TextEditingController();
 
   String _category = 'PRODUCT';
+  String? _selectedProjectId;
+  List<Map<String, dynamic>> _activeProjects = [];
+  bool _loadingProjects = true;
   List<XFile> _pickedFiles = [];
   String? _error;
   bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadActiveProjects());
+  }
 
   @override
   void dispose() {
@@ -35,6 +44,26 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
     super.dispose();
   }
 
+  Future<void> _loadActiveProjects() async {
+    final client = context.read<AuthProvider>().client;
+    if (client == null) {
+      if (mounted) setState(() => _loadingProjects = false);
+      return;
+    }
+    try {
+      final res = await client.get('/dashboard/customer-summary');
+      final list = (res['activeProjects'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+      if (mounted) {
+        setState(() {
+          _activeProjects = list;
+          _loadingProjects = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loadingProjects = false);
+    }
+  }
+
   Future<void> _pickImages() async {
     final picker = ImagePicker();
     final picked = await picker.pickMultiImage();
@@ -44,12 +73,40 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
 
   Future<void> _submit() async {
     final name = _nameController.text.trim();
-    final projectLocation = _projectLocationController.text.trim();
     final description = _descriptionController.text.trim();
-    if (name.isEmpty || projectLocation.isEmpty || description.isEmpty) {
-      setState(() => _error = 'Please fill required fields: Name, Project location, Description.');
+    if (name.isEmpty || description.isEmpty) {
+      setState(() => _error = 'Please fill required fields: Name, Description.');
       return;
     }
+
+    String projectLocation;
+    String? projectId;
+    if (_activeProjects.isNotEmpty) {
+      if (_selectedProjectId == null || _selectedProjectId!.isEmpty) {
+        setState(() => _error = 'Please select the project this complaint relates to.');
+        return;
+      }
+      Map<String, dynamic>? proj;
+      for (final p in _activeProjects) {
+        if (p['id'] == _selectedProjectId) {
+          proj = p;
+          break;
+        }
+      }
+      if (proj == null) {
+        setState(() => _error = 'Invalid project selection.');
+        return;
+      }
+      projectLocation = proj['name'] as String? ?? _projectLocationController.text.trim();
+      projectId = _selectedProjectId;
+    } else {
+      projectLocation = _projectLocationController.text.trim();
+      if (projectLocation.isEmpty) {
+        setState(() => _error = 'Please enter project location (no active projects on file).');
+        return;
+      }
+    }
+
     final client = context.read<AuthProvider>().client;
     if (client == null) return;
     setState(() {
@@ -66,13 +123,16 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
         'description': description,
         'category': _category,
       };
+      if (projectId != null && projectId.isNotEmpty) {
+        fields['project_id'] = projectId;
+      }
       List<http.MultipartFile>? files;
       if (_pickedFiles.isNotEmpty) {
         files = [];
         for (final x in _pickedFiles) {
           final bytes = await x.readAsBytes();
-          final name = x.name;
-          files.add(http.MultipartFile.fromBytes('photos', bytes, filename: name.isNotEmpty ? name : 'image.jpg'));
+          final fname = x.name;
+          files.add(http.MultipartFile.fromBytes('photos', bytes, filename: fname.isNotEmpty ? fname : 'image.jpg'));
         }
       }
       await client.postMultipart('/complaints', fields: fields, files: files);
@@ -98,7 +158,7 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
           Text('Raise Complaint', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           Text(
-            'Submit product or service issues. You will receive a unique ID to track status.',
+            'You will receive a unique ID to track status.',
             style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
           ),
           const SizedBox(height: 24),
@@ -119,10 +179,38 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
                     const SizedBox(height: 24),
                     Text('Complaint details', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600, color: theme.colorScheme.primary)),
                     const SizedBox(height: 12),
-                    TextField(
-                      controller: _projectLocationController,
-                      decoration: const InputDecoration(labelText: 'Project location', border: OutlineInputBorder()),
-                    ),
+                    if (_loadingProjects)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
+                      )
+                    else if (_activeProjects.isNotEmpty)
+                      DropdownButtonFormField<String>(
+                        value: _selectedProjectId,
+                        decoration: const InputDecoration(
+                          labelText: 'Project *',
+                          border: OutlineInputBorder(),
+                          helperText: 'Select the project so your team can route the complaint correctly.',
+                        ),
+                        items: [
+                          for (final p in _activeProjects)
+                            if (p['id'] is String)
+                              DropdownMenuItem<String>(
+                                value: p['id'] as String,
+                                child: Text(p['name'] as String? ?? '—'),
+                              ),
+                        ],
+                        onChanged: (v) => setState(() => _selectedProjectId = v),
+                      )
+                    else
+                      TextField(
+                        controller: _projectLocationController,
+                        decoration: const InputDecoration(
+                          labelText: 'Project location *',
+                          border: OutlineInputBorder(),
+                          helperText: 'No active projects on file — describe the site or location.',
+                        ),
+                      ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _descriptionController,
