@@ -1,5 +1,6 @@
 const clientsService = require('./clients.service');
 const XLSX = require('xlsx');
+const { assertBufferSize } = require('../../utils/uploadLimits');
 
 async function list(req, reply) {
   const result = await clientsService.list(req.server.prisma, req.query || {});
@@ -37,6 +38,7 @@ async function bulkUpload(req, reply) {
     return reply.status(400).send({ success: false, message: 'No file uploaded' });
   }
   const buffer = await data.toBuffer();
+  if (!assertBufferSize(buffer, reply)) return;
   const workbook = XLSX.read(buffer, { type: 'buffer' });
   const sheetName = workbook.SheetNames[0];
   const sheet = workbook.Sheets[sheetName];

@@ -29,7 +29,7 @@ async function build() {
     credentials: true,
   });
   await fastify.register(sensible);
-  await fastify.register(multipart, { limits: { fileSize: 10 * 1024 * 1024 } });
+  await fastify.register(multipart, { limits: { fileSize: 5 * 1024 * 1024 } });
   await fastify.register(prismaPlugin);
   await fastify.register(cachePlugin, { config });
   await fastify.register(authenticateJWT);

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../auth_provider.dart';
 import '../api/client.dart';
+import '../utils/media_url.dart';
 
 class ProductsScreen extends StatefulWidget {
   const ProductsScreen({super.key});
@@ -102,7 +103,7 @@ class _ProductsScreenState extends State<ProductsScreen> {
                     final p = filtered[i];
                     final name = p['name'] as String? ?? '—';
                     final desc = p['description'] as String? ?? '—';
-                    final imageUrl = p['imageUrl'] as String?;
+                    final imageUrl = MediaUrl.resolve(MediaUrl.imageUrlFromMap(p), AuthProvider.baseUrl);
                     return Card(
                       clipBehavior: Clip.antiAlias,
                       child: Column(
@@ -110,7 +111,26 @@ class _ProductsScreenState extends State<ProductsScreen> {
                         children: [
                           Expanded(
                             child: imageUrl != null && imageUrl.isNotEmpty
-                                ? Image.network(imageUrl, fit: BoxFit.cover)
+                                ? Image.network(
+                                    imageUrl,
+                                    fit: BoxFit.cover,
+                                    headers: const {'Accept': 'image/*'},
+                                    loadingBuilder: (context, child, progress) {
+                                      if (progress == null) return child;
+                                      return Center(
+                                        child: SizedBox(
+                                          width: 28,
+                                          height: 28,
+                                          child: CircularProgressIndicator(strokeWidth: 2, color: theme.colorScheme.primary),
+                                        ),
+                                      );
+                                    },
+                                    errorBuilder: (context, error, stackTrace) => Container(
+                                      color: theme.colorScheme.surfaceContainerHighest,
+                                      alignment: Alignment.center,
+                                      child: Icon(Icons.broken_image_outlined, size: 40, color: theme.colorScheme.outline),
+                                    ),
+                                  )
                                 : Container(
                                     color: theme.colorScheme.surfaceContainerHighest,
                                     child: Icon(Icons.image, size: 40, color: theme.colorScheme.outline),

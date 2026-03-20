@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../auth_provider.dart';
 import '../api/client.dart';
+import '../utils/media_url.dart';
 
 /// Allowed extensions for complaint attachments (aligned with server `media` scope).
 const _mediaExtensions = <String>[
@@ -116,6 +117,14 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
         }
         return;
       }
+      if (f.size > kMaxUploadBytes) {
+        if (mounted) {
+          setState(() {
+            _error = '“${f.name}” exceeds the maximum size of 5 MB.';
+          });
+        }
+        return;
+      }
     }
     if (mounted) {
       setState(() {
@@ -189,6 +198,15 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
             if (mounted) {
               setState(() {
                 _error = 'Could not read “${f.name}”. Try a smaller file or pick again.';
+                _submitting = false;
+              });
+            }
+            return;
+          }
+          if (bytes.length > kMaxUploadBytes) {
+            if (mounted) {
+              setState(() {
+                _error = '“${f.name}” exceeds the maximum size of 5 MB.';
                 _submitting = false;
               });
             }

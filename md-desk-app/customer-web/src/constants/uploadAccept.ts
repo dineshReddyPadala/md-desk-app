@@ -1,3 +1,14 @@
+export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+
+export function validateFilesMaxSize(files: FileList | File[], maxBytes: number = MAX_UPLOAD_BYTES): string | null {
+  for (const f of Array.from(files)) {
+    if (f.size > maxBytes) {
+      return `"${f.name}" exceeds the maximum size of 5 MB.`;
+    }
+  }
+  return null;
+}
+
 /** Browser file input `accept` for complaint attachments. */
 export const ACCEPT_FULL_MEDIA =
   '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.gif,.webp,.svg,.mp4,.avi,.mov,.mkv,.webm,.mp3,.wav,.aac,.ogg,.zip';
@@ -49,6 +60,8 @@ export function validateFilesFullMedia(files: FileList | File[]): string | null 
       return `“${f.name}” is not allowed. ${MSG_MEDIA}`;
     }
   }
+  const sizeErr = validateFilesMaxSize(files);
+  if (sizeErr) return sizeErr;
   return null;
 }
 
@@ -62,5 +75,7 @@ export function validateFilesChat(files: FileList | File[]): string | null {
       return `“${f.name}” is not allowed. ${MSG_CHAT}`;
     }
   }
+  const sizeErr = validateFilesMaxSize(files);
+  if (sizeErr) return sizeErr;
   return null;
 }

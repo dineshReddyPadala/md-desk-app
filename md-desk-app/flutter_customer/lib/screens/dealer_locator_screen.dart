@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../auth_provider.dart';
 import '../api/client.dart';
+import '../utils/media_url.dart';
 
 class DealerLocatorScreen extends StatefulWidget {
   const DealerLocatorScreen({super.key});
@@ -88,7 +89,7 @@ class _DealerLocatorScreenState extends State<DealerLocatorScreen> {
               final name = d['name'] as String? ?? '—';
               final city = d['city'] as String?;
               final phone = d['phone'] as String?;
-              final imageUrl = d['imageUrl'] as String?;
+              final imageUrl = MediaUrl.resolve(MediaUrl.imageUrlFromMap(d), AuthProvider.baseUrl);
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 clipBehavior: Clip.antiAlias,
@@ -96,7 +97,25 @@ class _DealerLocatorScreenState extends State<DealerLocatorScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (imageUrl != null && imageUrl.isNotEmpty)
-                      Image.network(imageUrl, height: 140, fit: BoxFit.cover)
+                      Image.network(
+                        imageUrl,
+                        height: 140,
+                        fit: BoxFit.cover,
+                        headers: const {'Accept': 'image/*'},
+                        loadingBuilder: (context, child, progress) {
+                          if (progress == null) return child;
+                          return SizedBox(
+                            height: 140,
+                            child: Center(child: CircularProgressIndicator(strokeWidth: 2, color: theme.colorScheme.primary)),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          height: 140,
+                          color: theme.colorScheme.surfaceContainerHighest,
+                          alignment: Alignment.center,
+                          child: Icon(Icons.broken_image_outlined, size: 48, color: theme.colorScheme.outline),
+                        ),
+                      )
                     else
                       Container(
                         height: 140,

@@ -20,13 +20,13 @@ import {
   Alert,
   TablePagination,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DownloadIcon from '@mui/icons-material/Download';
 import { clientsApi, type ClientDto } from '../api/endpoints';
 import { getBackendErrorMessage } from '../api/getBackendErrorMessage';
+import { validateFilesMaxSize } from '../constants/uploadAccept';
 
 export default function ClientsPage() {
   const [open, setOpen] = useState(false);
@@ -49,13 +49,6 @@ export default function ClientsPage() {
   const total = data?.total ?? 0;
   const totalPages = data?.totalPages ?? 0;
 
-  const createMutation = useMutation({
-    mutationFn: () => clientsApi.create({ name: name.trim(), email: email.trim(), phone: phone || undefined, company: company || undefined }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['clients'] });
-      resetAndClose();
-    },
-  });
   const updateMutation = useMutation({
     mutationFn: () => editing ? clientsApi.update(editing.id, { name: name.trim(), phone: phone || undefined, email: email || undefined, company: company || undefined }) : Promise.reject(),
     onSuccess: () => {
@@ -90,15 +83,6 @@ export default function ClientsPage() {
     setCompany('');
   };
 
-  const handleOpenAdd = () => {
-    setEditing(null);
-    setName('');
-    setPhone('');
-    setEmail('');
-    setCompany('');
-    setOpen(true);
-  };
-
   const handleOpenEdit = (c: ClientDto) => {
     setEditing(c);
     setName(c.name);
@@ -124,7 +108,7 @@ export default function ClientsPage() {
 
   const doSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (editing) updateMutation.mutate(); else createMutation.mutate();
+    if (editing) updateMutation.mutate();
   };
 
   return (
@@ -135,14 +119,29 @@ export default function ClientsPage() {
           <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownloadTemplate}>Download template</Button>
           <Button component="label" variant="outlined" startIcon={<UploadFileIcon />}>
             Excel upload
-            <input type="file" accept=".xlsx,.xls" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) { setBulkError(null); setBulkFile(f); } }} />
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                const sz = validateFilesMaxSize([f]);
+                if (sz) {
+                  setBulkError(sz);
+                  e.target.value = '';
+                  return;
+                }
+                setBulkError(null);
+                setBulkFile(f);
+              }}
+            />
           </Button>
           {bulkFile && (
             <Button variant="contained" onClick={() => bulkUploadMutation.mutate(bulkFile)} disabled={bulkUploadMutation.isPending}>
               Upload {bulkFile.name}
             </Button>
           )}
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenAdd}>Add Client</Button>
         </Box>
       </Box>
       {bulkError && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setBulkError(null)}>{bulkError}</Alert>}
@@ -190,20 +189,20 @@ export default function ClientsPage() {
       </TableContainer>
 
       <Dialog open={open} onClose={resetAndClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
-        <DialogTitle>{editing ? 'Edit Client' : 'Add Client (manual entry)'}</DialogTitle>
+        <DialogTitle>Edit Client</DialogTitle>
         <DialogContent>
           <form onSubmit={doSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 8 }}>
             <TextField fullWidth label="Name" value={name} onChange={(e) => setName(e.target.value)} required />
             <TextField fullWidth label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
             <TextField fullWidth label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
             <TextField fullWidth label="Company" value={company} onChange={(e) => setCompany(e.target.value)} />
-            {(createMutation.isError || updateMutation.isError) && (
-              <Alert severity="error">{getBackendErrorMessage(createMutation.error || updateMutation.error)}</Alert>
+            {updateMutation.isError && (
+              <Alert severity="error">{getBackendErrorMessage(updateMutation.error)}</Alert>
             )}
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
               <Button onClick={resetAndClose}>Cancel</Button>
-              <Button type="submit" variant="contained" disabled={createMutation.isPending || updateMutation.isPending || !name.trim() || !email.trim()}>
-                {editing ? 'Update' : 'Create'}
+              <Button type="submit" variant="contained" disabled={updateMutation.isPending || !name.trim() || !email.trim()}>
+                Update
               </Button>
             </Box>
           </form>

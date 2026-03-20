@@ -45,7 +45,7 @@ import {
 } from '../api/endpoints';
 import { getBackendErrorMessage } from '../api/getBackendErrorMessage';
 import { useStaffRole } from '../hooks/useStaffRole';
-import { ACCEPT_FULL_MEDIA, validateFilesFullMedia } from '../constants/uploadAccept';
+import { ACCEPT_FULL_MEDIA, validateFilesFullMedia, validateFilesMaxSize } from '../constants/uploadAccept';
 
 const STATUS_OPTIONS: { value: ProjectDto['status']; label: string }[] = [
   { value: 'PENDING', label: 'Pending' },
@@ -249,7 +249,23 @@ export default function ProjectsPage() {
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownloadTemplate}>Download template</Button>
             <Button component="label" variant="outlined" startIcon={<UploadFileIcon />}>
               Excel upload
-              <input type="file" accept=".xlsx,.xls" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) { setBulkError(null); setBulkFile(f); } }} />
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  const sz = validateFilesMaxSize([f]);
+                  if (sz) {
+                    setBulkError(sz);
+                    e.target.value = '';
+                    return;
+                  }
+                  setBulkError(null);
+                  setBulkFile(f);
+                }}
+              />
             </Button>
             {bulkFile && (
               <Button variant="contained" onClick={() => bulkUploadMutation.mutate(bulkFile)} disabled={bulkUploadMutation.isPending}>

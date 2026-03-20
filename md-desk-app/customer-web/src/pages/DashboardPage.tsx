@@ -25,6 +25,8 @@ export default function DashboardPage() {
   const { data: summary, isLoading } = useQuery({
     queryKey: ['customer-dashboard'],
     queryFn: async () => (await dashboardApi.customerSummary()).data,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const activeProjects = summary?.activeProjects ?? [];
@@ -33,9 +35,37 @@ export default function DashboardPage() {
 
   return (
     <Box>
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h5" gutterBottom sx={{ mb: 0 }}>Dashboard</Typography>
-        <Typography variant="body2" color="text.secondary">Overview of your projects, complaints, and messages</Typography>
+      <Box
+        sx={{
+          mb: 3,
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'stretch', sm: 'center' },
+          gap: { xs: 2, sm: 3 },
+          flexWrap: 'wrap',
+        }}
+      >
+        <Box
+          component="img"
+          src="/TP-logo-1-1024x164-1.webp"
+          alt="TechnoPaints"
+          sx={{
+            height: { xs: 40, sm: 48 },
+            width: 'auto',
+            maxWidth: { xs: '100%', sm: 320 },
+            objectFit: 'contain',
+            objectPosition: 'left center',
+            border: '1px solid rgba(0, 0, 0, 0.12)',
+            borderRadius: 1,
+            boxSizing: 'border-box',
+            display: 'block',
+            mb: { xs: 2, sm: 0 },
+          }}
+        />
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography variant="h5" gutterBottom sx={{ mb: 0 }}>Dashboard</Typography>
+          <Typography variant="body2" color="text.secondary">Overview of your projects, complaints, and messages</Typography>
+        </Box>
       </Box>
 
       <Grid container spacing={3}>

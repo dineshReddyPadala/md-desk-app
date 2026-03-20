@@ -28,7 +28,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import { dealersApi, uploadApi, type DealerDto } from '../api/endpoints';
 import { getBackendErrorMessage } from '../api/getBackendErrorMessage';
 import { useStaffRole } from '../hooks/useStaffRole';
-import { ACCEPT_IMAGES_ONLY, validateFilesImageOnly } from '../constants/uploadAccept';
+import { ACCEPT_IMAGES_ONLY, validateFilesImageOnly, validateFilesMaxSize } from '../constants/uploadAccept';
 
 export default function DealersPage() {
   const { canMutate } = useStaffRole();
@@ -171,7 +171,23 @@ export default function DealersPage() {
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownloadTemplate}>Download template</Button>
             <Button component="label" variant="outlined" startIcon={<UploadFileIcon />}>
               Bulk upload (Excel)
-              <input type="file" accept=".xlsx,.xls" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) { setBulkError(null); setBulkFile(f); } }} />
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  const sz = validateFilesMaxSize([f]);
+                  if (sz) {
+                    setBulkError(sz);
+                    e.target.value = '';
+                    return;
+                  }
+                  setBulkError(null);
+                  setBulkFile(f);
+                }}
+              />
             </Button>
             {bulkFile && (
               <Button variant="contained" onClick={() => bulkUploadMutation.mutate(bulkFile)} disabled={bulkUploadMutation.isPending}>

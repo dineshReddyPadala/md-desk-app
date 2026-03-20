@@ -1,5 +1,6 @@
 const s3Service = require('../../services/s3.service');
 const fileUploadPolicy = require('../../utils/fileUploadPolicy');
+const { assertBufferSize } = require('../../utils/uploadLimits');
 
 async function upload(req, reply) {
   const scope = fileUploadPolicy.normalizeScope(req.query?.scope);
@@ -8,6 +9,7 @@ async function upload(req, reply) {
     return reply.status(400).send({ success: false, message: 'No file uploaded' });
   }
   const buffer = await data.toBuffer();
+  if (!assertBufferSize(buffer, reply)) return;
   const mimetype = data.mimetype;
   try {
     const url = await s3Service.uploadToS3(buffer, mimetype, 'uploads', {
@@ -28,6 +30,7 @@ async function uploadMultiple(req, reply) {
   for await (const part of parts) {
     if (part.type === 'file') {
       const buffer = await part.toBuffer();
+      if (!assertBufferSize(buffer, reply)) return;
       const mimetype = part.mimetype;
       try {
         const url = await s3Service.uploadToS3(buffer, mimetype, 'uploads', {

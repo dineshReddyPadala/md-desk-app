@@ -1,4 +1,5 @@
 const s3Service = require('../../services/s3.service');
+const { assertBufferSize } = require('../../utils/uploadLimits');
 
 async function parseMultipartComplaint(req, reply) {
   if (req.isMultipart && req.isMultipart()) {
@@ -11,6 +12,7 @@ async function parseMultipartComplaint(req, reply) {
           data[part.fieldname] = part.value;
         } else if (part.type === 'file') {
           const buffer = await part.toBuffer();
+          if (!assertBufferSize(buffer, reply)) return;
           const mimetype = part.mimetype;
           try {
             const url = await s3Service.uploadToS3(buffer, mimetype, 'complaints', {

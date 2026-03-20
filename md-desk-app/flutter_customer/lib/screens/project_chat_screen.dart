@@ -6,6 +6,7 @@ import 'package:socket_io_client/socket_io_client.dart' as IO;
 import 'package:url_launcher/url_launcher.dart';
 import '../auth_provider.dart';
 import '../api/client.dart';
+import '../utils/media_url.dart';
 
 /// Allowed extensions for chat uploads (server `scope=chat`).
 const _chatExtensions = <String>{
@@ -301,6 +302,10 @@ class _ProjectChatScreenState extends State<ProjectChatScreen> with SingleTicker
     final bytes = f.bytes;
     if (bytes == null) {
       setState(() => _error = 'Could not read file.');
+      return;
+    }
+    if (bytes.length > kMaxUploadBytes) {
+      setState(() => _error = 'File exceeds the maximum size of 5 MB.');
       return;
     }
 

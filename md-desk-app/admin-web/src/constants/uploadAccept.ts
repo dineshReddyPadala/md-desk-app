@@ -1,3 +1,16 @@
+/** Max upload size (aligned with server @fastify/multipart and UI). */
+export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+
+/** Reject files over the limit (call from change handlers before upload). */
+export function validateFilesMaxSize(files: FileList | File[], maxBytes: number = MAX_UPLOAD_BYTES): string | null {
+  for (const f of Array.from(files)) {
+    if (f.size > maxBytes) {
+      return `"${f.name}" exceeds the maximum size of 5 MB.`;
+    }
+  }
+  return null;
+}
+
 /** Browser file input `accept` for full media uploads (complaints-style). */
 export const ACCEPT_FULL_MEDIA =
   '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.gif,.webp,.svg,.mp4,.avi,.mov,.mkv,.webm,.mp3,.wav,.aac,.ogg,.zip';
@@ -59,6 +72,8 @@ export function validateFilesFullMedia(files: FileList | File[]): string | null 
       return `"${f.name}" is not allowed here. ${MSG_MEDIA}`;
     }
   }
+  const sizeErr = validateFilesMaxSize(files);
+  if (sizeErr) return sizeErr;
   return null;
 }
 
@@ -70,6 +85,8 @@ export function validateFilesImageOnly(files: FileList | File[]): string | null 
       return `"${f.name}" is not allowed here. ${MSG_IMAGE}`;
     }
   }
+  const sizeErr = validateFilesMaxSize(files);
+  if (sizeErr) return sizeErr;
   return null;
 }
 
@@ -83,5 +100,7 @@ export function validateFilesChat(files: FileList | File[]): string | null {
       return `"${f.name}" is not allowed here. ${MSG_CHAT}`;
     }
   }
+  const sizeErr = validateFilesMaxSize(files);
+  if (sizeErr) return sizeErr;
   return null;
 }

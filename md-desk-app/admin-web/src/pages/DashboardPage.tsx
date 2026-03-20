@@ -43,25 +43,32 @@ const chartOptions = {
 export default function DashboardPage() {
   const { isEmployee } = useStaffRole();
 
+  const dashboardQueryOpts = { staleTime: 0, refetchOnMount: 'always' as const };
+
   const { data: summary, isLoading } = useQuery({
     queryKey: ['dashboard-summary', isEmployee],
     queryFn: async () => (await dashboardApi.summary()).data,
+    ...dashboardQueryOpts,
   });
   const { data: regionData } = useQuery({
     queryKey: ['dashboard-region', isEmployee],
     queryFn: async () => (await dashboardApi.regionStats()).data,
+    ...dashboardQueryOpts,
   });
   const { data: projectComplaintData } = useQuery({
     queryKey: ['dashboard-project-complaints', isEmployee],
     queryFn: async () => (await dashboardApi.projectComplaintStats()).data,
+    ...dashboardQueryOpts,
   });
   const { data: statusData } = useQuery({
     queryKey: ['dashboard-status', isEmployee],
     queryFn: async () => (await dashboardApi.statusStats()).data,
+    ...dashboardQueryOpts,
   });
   const { data: creationData } = useQuery({
     queryKey: ['dashboard-creation', 7, isEmployee],
     queryFn: async () => (await dashboardApi.creationStats({ days: 7 })).data,
+    ...dashboardQueryOpts,
   });
 
   const regionStats = regionData?.stats || [];
@@ -117,9 +124,30 @@ export default function DashboardPage() {
     ],
   };
 
+  const dashboardLogo = (
+    <Box
+      component="img"
+      src="/TP-logo-1-1024x164-1.webp"
+      alt="TechnoPaints"
+      sx={{
+        height: { xs: 40, sm: 48 },
+        width: 'auto',
+        maxWidth: { xs: '100%', sm: 320 },
+        objectFit: 'contain',
+        objectPosition: 'left center',
+        border: '1px solid rgba(0, 0, 0, 0.12)',
+        borderRadius: 1,
+        boxSizing: 'border-box',
+        display: 'block',
+        mb: { xs: 2, sm: 0 },
+      }}
+    />
+  );
+
   if (isLoading || !summary) {
     return (
       <Box>
+        {dashboardLogo}
         <Skeleton variant="text" width={200} height={48} sx={{ mb: 2 }} />
         <Grid container spacing={3}>
           {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => (
@@ -177,13 +205,25 @@ export default function DashboardPage() {
 
   return (
     <Box>
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" fontWeight={700} gutterBottom>
-          Dashboard
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Overview of complaints and key metrics
-        </Typography>
+      <Box
+        sx={{
+          mb: 3,
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: { xs: 'stretch', sm: 'center' },
+          gap: { xs: 2, sm: 3 },
+          flexWrap: 'wrap',
+        }}
+      >
+        {dashboardLogo}
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography variant="h4" fontWeight={700} gutterBottom>
+            Dashboard
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Overview of complaints and key metrics
+          </Typography>
+        </Box>
       </Box>
 
       {summary.highPriority > 0 && (
