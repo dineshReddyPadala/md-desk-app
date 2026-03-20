@@ -23,6 +23,7 @@ async function parseMultipartComplaint(req, reply) {
       city: data.city,
       product_used: data.product_used,
       project_location: data.project_location,
+      project_id: data.project_id,
       description: data.description,
       category: data.category || 'PRODUCT',
     };

@@ -22,10 +22,11 @@ model User {
   createdAt             DateTime  @default(now()) @map("created_at")
   updatedAt             DateTime  @updatedAt @map("updated_at")
 
-  complaints    Complaint[]
-  messages      Message[]
-  notifications Notification[]
-  projects      Project[]
+  complaints           Complaint[]
+  messages             Message[]
+  notifications        Notification[]
+  projects             Project[]
+  projectAssignments   ProjectEmployee[]
 
   @@map("users")
 }
@@ -63,6 +64,7 @@ model Complaint {
   id              String             @id @default(cuid())
   complaintId     String             @unique @map("complaint_id")
   userId          String             @map("user_id")
+  projectId       String?            @map("project_id")
   category        ComplaintCategory  @default(PRODUCT)
   productUsed     String             @map("product_used")
   projectLocation String             @map("project_location")
@@ -76,10 +78,12 @@ model Complaint {
   updatedAt       DateTime           @updatedAt @map("updated_at")
 
   user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project         Project?          @relation(fields: [projectId], references: [id], onDelete: SetNull)
   media           ComplaintMedia[]
   adminResponses  AdminResponse[]
 
   @@index([userId])
+  @@index([projectId])
   @@index([status])
   @@index([priority])
   @@index([category])
@@ -166,11 +170,27 @@ model Project {
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
 
-  client User? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  client      User?             @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  assignees   ProjectEmployee[]
+  complaints  Complaint[]
 
   @@index([clientId])
   @@index([status])
   @@map("projects")
+}
+
+model ProjectEmployee {
+  id         String   @id @default(cuid())
+  projectId  String   @map("project_id")
+  employeeId String   @map("employee_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  project  Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  employee User    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, employeeId])
+  @@index([employeeId])
+  @@map("project_employees")
 }
 
 model AdminResponse {

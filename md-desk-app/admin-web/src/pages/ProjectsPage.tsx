@@ -22,14 +22,27 @@ import {
   MenuItem,
   TablePagination,
   Chip,
+  Autocomplete,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import DeleteIcon from '@mui/icons-material/Delete';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DownloadIcon from '@mui/icons-material/Download';
-import { projectsApi, clientsApi, uploadApi, type ProjectDto, type ClientDto } from '../api/endpoints';
+import EditIcon from '@mui/icons-material/Edit';
+import {
+  projectsApi,
+  clientsApi,
+  uploadApi,
+  employeesApi,
+  type ProjectDto,
+  type ClientDto,
+  type EmployeeDto,
+} from '../api/endpoints';
 import { getBackendErrorMessage } from '../api/getBackendErrorMessage';
 import { useStaffRole } from '../hooks/useStaffRole';
 
@@ -48,12 +61,23 @@ export default function ProjectsPage() {
   const [endDate, setEndDate] = useState('');
   const [documentFile, setDocumentFile] = useState<File | null>(null);
   const [clientId, setClientId] = useState('');
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [status, setStatus] = useState<ProjectDto['status']>('PENDING');
   const [formError, setFormError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [bulkFile, setBulkFile] = useState<File | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
+  const [editDialog, setEditDialog] = useState<ProjectDto | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editStartDate, setEditStartDate] = useState('');
+  const [editEndDate, setEditEndDate] = useState('');
+  const [editClientId, setEditClientId] = useState('');
+  const [editStatus, setEditStatus] = useState<ProjectDto['status']>('PENDING');
+  const [editAssigneeIds, setEditAssigneeIds] = useState<string[]>([]);
+  const [editDocumentFile, setEditDocumentFile] = useState<File | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data: projectsData, isLoading } = useQuery({
@@ -65,8 +89,14 @@ export default function ProjectsPage() {
     queryFn: async () => (await clientsApi.list({ page: 1, limit: 500 })).data,
     enabled: canMutate,
   });
+  const { data: employeesData } = useQuery({
+    queryKey: ['employees', 1, 300],
+    queryFn: async () => (await employeesApi.list({ page: 1, limit: 300 })).data,
+    enabled: canMutate,
+  });
   const projects = (projectsData?.projects || []) as ProjectDto[];
   const clients = (clientsData?.clients || []) as ClientDto[];
+  const employees = (employeesData?.items || []) as EmployeeDto[];
   const totalProjects = projectsData?.total ?? 0;
 
   const createMutation = useMutation({
@@ -79,6 +109,7 @@ export default function ProjectsPage() {
         documentUrl: overrides?.documentUrl,
         status,
         clientId: clientId || undefined,
+        assigneeIds: assigneeIds.length ? assigneeIds : undefined,
       });
     },
     onSuccess: () => {
@@ -89,6 +120,27 @@ export default function ProjectsPage() {
   const updateStatusMutation = useMutation({
     mutationFn: ({ id, status: s }: { id: string; status: ProjectDto['status'] }) => projectsApi.updateStatus(id, s),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['projects'] }),
+  });
+  const updateProjectMutation = useMutation({
+    mutationFn: async (opts: { documentUrl?: string }) => {
+      if (!editDialog) throw new Error('No project');
+      return projectsApi.update(editDialog.id, {
+        name: editName.trim(),
+        description: editDescription.trim() || undefined,
+        startDate: editStartDate || undefined,
+        endDate: editEndDate || undefined,
+        clientId: editClientId || undefined,
+        status: editStatus,
+        assigneeIds: editAssigneeIds,
+        ...(opts.documentUrl != null ? { documentUrl: opts.documentUrl } : {}),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      setEditDialog(null);
+      setEditDocumentFile(null);
+      setEditError(null);
+    },
   });
   const deleteMutation = useMutation({
     mutationFn: (id: string) => projectsApi.delete(id),
@@ -129,9 +181,42 @@ export default function ProjectsPage() {
     setEndDate('');
     setDocumentFile(null);
     setClientId('');
+    setAssigneeIds([]);
     setStatus('PENDING');
     setFormError(null);
     setShowForm(false);
+  };
+
+  const openEditDialog = (p: ProjectDto) => {
+    setEditDialog(p);
+    setEditName(p.name);
+    setEditDescription(p.description ?? '');
+    setEditStartDate(p.startDate ? new Date(p.startDate).toISOString().slice(0, 10) : '');
+    setEditEndDate(p.endDate ? new Date(p.endDate).toISOString().slice(0, 10) : '');
+    setEditClientId(p.clientId ?? '');
+    setEditStatus(p.status);
+    setEditAssigneeIds(p.assignees?.map((a) => a.employee.id) ?? []);
+    setEditDocumentFile(null);
+    setEditError(null);
+  };
+
+  const handleSaveEditProject = async () => {
+    setEditError(null);
+    if (!editName.trim()) {
+      setEditError('Project name is required');
+      return;
+    }
+    let documentUrl: string | undefined;
+    if (editDocumentFile) {
+      try {
+        const res = await uploadApi.upload(editDocumentFile);
+        documentUrl = res.data.file_url;
+      } catch {
+        setEditError('File upload failed');
+        return;
+      }
+    }
+    updateProjectMutation.mutate({ documentUrl });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -151,6 +236,8 @@ export default function ProjectsPage() {
   };
 
   const formatDate = (d: string | null | undefined) => (d ? new Date(d).toLocaleDateString() : '—');
+
+  const employeeOptionsSelected = (ids: string[]) => employees.filter((e) => ids.includes(e.id));
 
   return (
     <Box>
@@ -195,6 +282,15 @@ export default function ProjectsPage() {
                 ))}
               </Select>
             </FormControl>
+            <Autocomplete
+              multiple
+              options={employees}
+              getOptionLabel={(e) => `${e.name} (${e.email})`}
+              value={employeeOptionsSelected(assigneeIds)}
+              onChange={(_, v) => setAssigneeIds(v.map((x) => x.id))}
+              renderInput={(params) => <TextField {...params} label="Assign employees (dashboard & complaints)" placeholder="Search" />}
+              disableCloseOnSelect
+            />
             <Box>
               <Typography variant="body2" color="text.secondary" gutterBottom>File / Document upload (optional)</Typography>
               <Button component="label" variant="outlined" size="small" startIcon={<UploadFileIcon />}>
@@ -223,6 +319,65 @@ export default function ProjectsPage() {
         </Paper>
       </Collapse>
 
+      <Dialog open={!!editDialog} onClose={() => !updateProjectMutation.isPending && setEditDialog(null)} maxWidth="md" fullWidth>
+        <DialogTitle>Edit project{editDialog ? ` — ${editDialog.name}` : ''}</DialogTitle>
+        <DialogContent sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <TextField fullWidth label="Project name" value={editName} onChange={(e) => setEditName(e.target.value)} required />
+          <TextField fullWidth label="Description" value={editDescription} onChange={(e) => setEditDescription(e.target.value)} multiline rows={2} />
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <TextField type="date" label="Start date" value={editStartDate} onChange={(e) => setEditStartDate(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ minWidth: 160 }} />
+            <TextField type="date" label="End date" value={editEndDate} onChange={(e) => setEditEndDate(e.target.value)} InputLabelProps={{ shrink: true }} sx={{ minWidth: 160 }} />
+          </Box>
+          <FormControl fullWidth>
+            <InputLabel>Client</InputLabel>
+            <Select value={editClientId} label="Client" onChange={(e) => setEditClientId(e.target.value)}>
+              <MenuItem value="">— None —</MenuItem>
+              {clients.map((c) => (
+                <MenuItem key={c.id} value={c.id}>{c.name}{c.company ? ` (${c.company})` : ''}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl fullWidth>
+            <InputLabel>Status</InputLabel>
+            <Select value={editStatus} label="Status" onChange={(e) => setEditStatus(e.target.value as ProjectDto['status'])}>
+              {STATUS_OPTIONS.map((o) => (
+                <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Autocomplete
+            multiple
+            options={employees}
+            getOptionLabel={(e) => `${e.name} (${e.email})`}
+            value={employeeOptionsSelected(editAssigneeIds)}
+            onChange={(_, v) => setEditAssigneeIds(v.map((x) => x.id))}
+            renderInput={(params) => <TextField {...params} label="Assigned employees" placeholder="Search" />}
+            disableCloseOnSelect
+          />
+          <Box>
+            <Typography variant="body2" color="text.secondary" gutterBottom>Document</Typography>
+            {editDialog?.documentUrl && !editDocumentFile && (
+              <Button size="small" href={editDialog.documentUrl} target="_blank" rel="noopener noreferrer" sx={{ mr: 2, mb: 1 }}>
+                Current file
+              </Button>
+            )}
+            <Button component="label" variant="outlined" size="small" startIcon={<UploadFileIcon />}>
+              {editDocumentFile ? editDocumentFile.name : 'Replace document'}
+              <input type="file" hidden onChange={(e) => setEditDocumentFile(e.target.files?.[0] || null)} />
+            </Button>
+          </Box>
+          {(editError || updateProjectMutation.isError) && (
+            <Alert severity="error">{editError || getBackendErrorMessage(updateProjectMutation.error)}</Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialog(null)} disabled={updateProjectMutation.isPending}>Cancel</Button>
+          <Button variant="contained" disabled={updateProjectMutation.isPending || !editName.trim()} onClick={() => void handleSaveEditProject()}>
+            Save changes
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -231,6 +386,7 @@ export default function ProjectsPage() {
               <TableCell sx={{ fontWeight: 600 }}>Description</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Start / End</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Client</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Team</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Document</TableCell>
               <TableCell sx={{ fontWeight: 600 }} align="right">Actions</TableCell>
@@ -239,7 +395,7 @@ export default function ProjectsPage() {
           <TableBody>
             {isLoading
               ? Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={i}><TableCell colSpan={7}><Skeleton height={56} /></TableCell></TableRow>
+                  <TableRow key={i}><TableCell colSpan={8}><Skeleton height={56} /></TableCell></TableRow>
                 ))
               : projects.map((p) => (
                   <TableRow key={p.id} hover>
@@ -247,6 +403,18 @@ export default function ProjectsPage() {
                     <TableCell sx={{ maxWidth: 200 }}>{p.description ? (p.description.length > 60 ? p.description.slice(0, 60) + '…' : p.description) : '—'}</TableCell>
                     <TableCell>{formatDate(p.startDate)} / {formatDate(p.endDate)}</TableCell>
                     <TableCell>{p.client?.name || '—'}</TableCell>
+                    <TableCell sx={{ maxWidth: 220 }}>
+                      {p.assignees?.length
+                        ? (
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                            {p.assignees.slice(0, 3).map((a) => (
+                              <Chip key={a.employee.id} label={a.employee.name} size="small" variant="outlined" />
+                            ))}
+                            {p.assignees.length > 3 && <Chip label={`+${p.assignees.length - 3}`} size="small" />}
+                          </Box>
+                          )
+                        : '—'}
+                    </TableCell>
                     <TableCell>
                       {canMutate ? (
                         <Select
@@ -271,7 +439,12 @@ export default function ProjectsPage() {
                     </TableCell>
                     <TableCell align="right">
                       {canMutate && (
-                        <IconButton size="small" color="error" onClick={() => window.confirm('Delete this project?') && deleteMutation.mutate(p.id)}><DeleteIcon /></IconButton>
+                        <Box sx={{ display: 'inline-flex', gap: 0.5 }}>
+                          <IconButton size="small" color="primary" onClick={() => openEditDialog(p)} title="Edit project">
+                            <EditIcon />
+                          </IconButton>
+                          <IconButton size="small" color="error" onClick={() => window.confirm('Delete this project?') && deleteMutation.mutate(p.id)}><DeleteIcon /></IconButton>
+                        </Box>
                       )}
                     </TableCell>
                   </TableRow>

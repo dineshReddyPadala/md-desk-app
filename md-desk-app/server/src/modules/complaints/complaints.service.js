@@ -1,10 +1,37 @@
 const { nanoid } = require('nanoid');
+const employeeProjectScope = require('../../utils/employeeProjectScope');
 
 function generateComplaintId() {
   const prefix = 'MD';
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
   const short = nanoid(8).toUpperCase();
   return `${prefix}-${date}-${short}`;
+}
+
+function buildListWhere(status, priority, city, scopeWhere) {
+  const filters = [];
+  if (scopeWhere && Object.keys(scopeWhere).length) filters.push(scopeWhere);
+  if (status) filters.push({ status });
+  if (priority) filters.push({ priority });
+  if (city) filters.push({ city: { contains: city, mode: 'insensitive' } });
+  if (filters.length === 0) return {};
+  if (filters.length === 1) return filters[0];
+  return { AND: filters };
+}
+
+async function resolveProjectForCreate(prisma, userId, projectIdRaw) {
+  if (projectIdRaw == null || String(projectIdRaw).trim() === '') return { projectId: null };
+  const projectId = String(projectIdRaw).trim();
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, clientId: userId },
+    select: { id: true, name: true },
+  });
+  if (!project) {
+    const err = new Error('Invalid project: must be one of your assigned projects');
+    err.statusCode = 400;
+    throw err;
+  }
+  return { projectId: project.id, projectName: project.name };
 }
 
 async function createComplaint(prisma, userId, data, fileUrls = []) {
@@ -15,13 +42,21 @@ async function createComplaint(prisma, userId, data, fileUrls = []) {
     err.statusCode = 400;
     throw err;
   }
+  const { projectId, projectName } = await resolveProjectForCreate(prisma, userId, data.project_id);
+  let projectLocation = data.project_location;
+  if (projectId && projectName) {
+    projectLocation = projectLocation && String(projectLocation).trim()
+      ? String(projectLocation).trim()
+      : projectName;
+  }
   const complaint = await prisma.complaint.create({
     data: {
       complaintId,
       userId,
+      projectId,
       category,
       productUsed: data.product_used && String(data.product_used).trim() ? String(data.product_used).trim() : '—',
-      projectLocation: data.project_location,
+      projectLocation,
       description: data.description,
       name: data.name,
       phone: data.phone,
@@ -30,7 +65,7 @@ async function createComplaint(prisma, userId, data, fileUrls = []) {
         ? { create: fileUrls.map(({ file_url, file_type }) => ({ fileUrl: file_url, fileType: file_type })) }
         : undefined,
     },
-    include: { media: true },
+    include: { media: true, project: { select: { id: true, name: true } } },
   });
   return complaint;
 }
@@ -43,7 +78,7 @@ async function getMyComplaints(prisma, userId, page = 1, limit = 10, status, pri
   const [items, total] = await Promise.all([
     prisma.complaint.findMany({
       where,
-      include: { media: true },
+      include: { media: true, project: { select: { id: true, name: true } } },
       orderBy: { createdAt: 'desc' },
       skip,
       take: limit,
@@ -58,7 +93,12 @@ async function getComplaintById(prisma, id, userId = null) {
   if (userId) where.userId = userId;
   const complaint = await prisma.complaint.findFirst({
     where,
-    include: { media: true, user: { select: { name: true, email: true, phone: true, city: true } }, adminResponses: true },
+    include: {
+      media: true,
+      user: { select: { name: true, email: true, phone: true, city: true } },
+      adminResponses: true,
+      project: { select: { id: true, name: true } },
+    },
   });
   if (!complaint) {
     const err = new Error('Complaint not found');
@@ -71,7 +111,7 @@ async function getComplaintById(prisma, id, userId = null) {
 async function getComplaintByComplaintId(prisma, complaintId, userId) {
   const complaint = await prisma.complaint.findFirst({
     where: { complaintId, userId },
-    include: { media: true, adminResponses: true },
+    include: { media: true, adminResponses: true, project: { select: { id: true, name: true } } },
   });
   if (!complaint) {
     const err = new Error('Complaint not found');
@@ -81,16 +121,17 @@ async function getComplaintByComplaintId(prisma, complaintId, userId) {
   return complaint;
 }
 
-async function adminListComplaints(prisma, page = 1, limit = 10, status, priority, city) {
+async function adminListComplaints(prisma, page = 1, limit = 10, status, priority, city, scopeWhere = null) {
   const skip = (page - 1) * limit;
-  const where = {};
-  if (status) where.status = status;
-  if (priority) where.priority = priority;
-  if (city) where.city = { contains: city, mode: 'insensitive' };
+  const where = buildListWhere(status, priority, city, scopeWhere);
   const [items, total] = await Promise.all([
     prisma.complaint.findMany({
       where,
-      include: { media: true, user: { select: { name: true, email: true, phone: true } } },
+      include: {
+        media: true,
+        user: { select: { name: true, email: true, phone: true } },
+        project: { select: { id: true, name: true } },
+      },
       orderBy: { createdAt: 'desc' },
       skip,
       take: limit,
@@ -100,11 +141,20 @@ async function adminListComplaints(prisma, page = 1, limit = 10, status, priorit
   return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
 }
 
-async function getHighPriority(prisma, page = 1, limit = 20) {
-  return adminListComplaints(prisma, page, limit, null, 'HIGH');
+async function getHighPriority(prisma, page = 1, limit = 20, scopeWhere = null) {
+  return adminListComplaints(prisma, page, limit, null, 'HIGH', null, scopeWhere);
 }
 
-async function updateStatus(prisma, id, status, priority = null) {
+async function updateStatus(prisma, id, status, priority = null, options = {}) {
+  const { employeeUserId = null } = options;
+  if (employeeUserId) {
+    const ok = await employeeProjectScope.canEmployeeAccessComplaint(prisma, employeeUserId, id);
+    if (!ok) {
+      const err = new Error('Complaint not found');
+      err.statusCode = 404;
+      throw err;
+    }
+  }
   const validStatus = ['RECEIVED', 'UNDER_REVIEW', 'IN_PROGRESS', 'RESOLVED'];
   if (!validStatus.includes(status.toUpperCase())) {
     const err = new Error('Invalid status');
@@ -121,7 +171,7 @@ async function updateStatus(prisma, id, status, priority = null) {
   return prisma.complaint.update({
     where: { id },
     data,
-    include: { media: true, user: true },
+    include: { media: true, user: true, project: { select: { id: true, name: true } } },
   });
 }
 

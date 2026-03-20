@@ -15,7 +15,7 @@ import {
   FormHelperText,
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import { complaintsApi } from '../api/endpoints';
+import { complaintsApi, dashboardApi } from '../api/endpoints';
 
 export default function RaiseComplaintPage() {
   const navigate = useNavigate();
@@ -23,16 +23,30 @@ export default function RaiseComplaintPage() {
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
   const [projectLocation, setProjectLocation] = useState('');
+  const [projectId, setProjectId] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<string>('PRODUCT');
   const [files, setFiles] = useState<File[]>([]);
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  const { data: dashData } = useQuery({
+    queryKey: ['customer-summary', 'raise'],
+    queryFn: async () => (await dashboardApi.customerSummary()).data,
+  });
+  const activeProjects = dashData?.activeProjects ?? [];
+
   const createMutation = useMutation({
     mutationFn: async () => {
       const form = new FormData();
       form.append('name', name);
       form.append('phone', phone);
       form.append('city', city);
-      form.append('project_location', projectLocation);
+      const loc =
+        projectId && activeProjects.length
+          ? activeProjects.find((p) => p.id === projectId)?.name || projectLocation
+          : projectLocation;
+      form.append('project_location', loc);
+      if (projectId) form.append('project_id', projectId);
       form.append('description', description);
       form.append('category', category);
       files.forEach((f) => form.append('photos', f));
@@ -45,6 +59,15 @@ export default function RaiseComplaintPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setLocalError(null);
+    if (activeProjects.length > 0 && !projectId) {
+      setLocalError('Please select the project this complaint relates to.');
+      return;
+    }
+    if (!activeProjects.length && !projectLocation.trim()) {
+      setLocalError('Project location is required.');
+      return;
+    }
     createMutation.mutate();
   };
 
@@ -66,7 +89,31 @@ export default function RaiseComplaintPage() {
 
           <Typography variant="subtitle1" fontWeight={600} color="primary.main" gutterBottom>Complaint details</Typography>
           <Box sx={{ display: 'grid', gap: 2, mb: 3 }}>
-            <TextField fullWidth label="Project location" value={projectLocation} onChange={(e) => setProjectLocation(e.target.value)} required />
+            {activeProjects.length > 0 ? (
+              <FormControl fullWidth required>
+                <InputLabel id="raise-project-label">Project</InputLabel>
+                <Select
+                  labelId="raise-project-label"
+                  value={projectId}
+                  label="Project"
+                  onChange={(e) => setProjectId(e.target.value)}
+                >
+                  {activeProjects.map((p) => (
+                    <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
+                  ))}
+                </Select>
+                <FormHelperText>Select the project so your team can route the complaint correctly.</FormHelperText>
+              </FormControl>
+            ) : (
+              <TextField
+                fullWidth
+                label="Project location"
+                value={projectLocation}
+                onChange={(e) => setProjectLocation(e.target.value)}
+                required
+                helperText="No active projects on file — describe the site or location."
+              />
+            )}
             <TextField fullWidth multiline rows={4} label="Description" value={description} onChange={(e) => setDescription(e.target.value)} required placeholder="Describe the issue in detail…" />
             <FormControl fullWidth required>
               <InputLabel id="raise-category-label">Category</InputLabel>
@@ -95,9 +142,11 @@ export default function RaiseComplaintPage() {
             <FormHelperText>JPG, PNG or PDF. Optional.</FormHelperText>
           </Box>
 
-          {createMutation.isError && (
+          {(localError || createMutation.isError) && (
             <Alert severity="error" sx={{ mb: 2 }}>
-              {(createMutation.error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Failed to submit'}
+              {localError
+                || (createMutation.error as { response?: { data?: { message?: string } } })?.response?.data?.message
+                || 'Failed to submit'}
             </Alert>
           )}
           <Button type="submit" variant="contained" size="large" disabled={createMutation.isPending}>

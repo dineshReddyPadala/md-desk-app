@@ -83,6 +83,7 @@ export const dealersApi = {
 };
 
 export type ClientDto = { id: string; name: string; phone?: string | null; email?: string | null; company?: string | null; createdAt: string; updatedAt: string };
+export type ProjectAssigneeDto = { employee: { id: string; name: string; email: string } };
 export type ProjectDto = {
   id: string;
   name: string;
@@ -93,6 +94,7 @@ export type ProjectDto = {
   status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
   clientId?: string | null;
   client?: ClientDto | null;
+  assignees?: ProjectAssigneeDto[];
   createdAt: string;
   updatedAt: string;
 };
@@ -120,10 +122,29 @@ export const projectsApi = {
   list: (params?: { status?: string; clientId?: string; page?: number; limit?: number }) =>
     api.get<{ success: boolean; projects: ProjectDto[]; total: number; page: number; totalPages: number }>('/admin/projects', { params }),
   getById: (id: string) => api.get<{ success: boolean; project: ProjectDto }>(`/admin/projects/${id}`),
-  create: (data: { name: string; description?: string; startDate?: string; endDate?: string; documentUrl?: string; status?: string; clientId?: string }) =>
-    api.post<{ success: boolean; project: ProjectDto }>('/admin/projects', data),
-  update: (id: string, data: Partial<{ name: string; description: string; startDate: string; endDate: string; documentUrl: string; status: string; clientId: string }>) =>
-    api.put<{ success: boolean; project: ProjectDto }>(`/admin/projects/${id}`, data),
+  create: (data: {
+    name: string;
+    description?: string;
+    startDate?: string;
+    endDate?: string;
+    documentUrl?: string;
+    status?: string;
+    clientId?: string;
+    assigneeIds?: string[];
+  }) => api.post<{ success: boolean; project: ProjectDto }>('/admin/projects', data),
+  update: (
+    id: string,
+    data: Partial<{
+      name: string;
+      description: string;
+      startDate: string;
+      endDate: string;
+      documentUrl: string;
+      status: string;
+      clientId: string;
+      assigneeIds: string[];
+    }>
+  ) => api.put<{ success: boolean; project: ProjectDto }>(`/admin/projects/${id}`, data),
   updateStatus: (id: string, status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED') =>
     api.patch<{ success: boolean; project: ProjectDto }>(`/admin/projects/${id}/status`, { status }),
   delete: (id: string) => api.delete<{ success: boolean }>(`/admin/projects/${id}`),

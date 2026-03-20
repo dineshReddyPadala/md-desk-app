@@ -2,12 +2,12 @@ const projectsService = require('./projects.service');
 const XLSX = require('xlsx');
 
 async function list(req, reply) {
-  const result = await projectsService.list(req.server.prisma, req.query || {});
+  const result = await projectsService.list(req.server.prisma, req.query || {}, req.user);
   return reply.send({ success: true, ...result, projects: result.items });
 }
 
 async function getById(req, reply) {
-  const project = await projectsService.getById(req.server.prisma, req.params.id);
+  const project = await projectsService.getById(req.server.prisma, req.params.id, req.user);
   if (!project) return reply.status(404).send({ success: false, message: 'Project not found' });
   return reply.send({ success: true, project });
 }
@@ -18,21 +18,21 @@ async function create(req, reply) {
 }
 
 async function update(req, reply) {
-  const existing = await projectsService.getById(req.server.prisma, req.params.id);
+  const existing = await projectsService.getById(req.server.prisma, req.params.id, req.user);
   if (!existing) return reply.status(404).send({ success: false, message: 'Project not found' });
   const project = await projectsService.update(req.server.prisma, req.params.id, req.body);
   return reply.send({ success: true, project });
 }
 
 async function updateStatus(req, reply) {
-  const existing = await projectsService.getById(req.server.prisma, req.params.id);
+  const existing = await projectsService.getById(req.server.prisma, req.params.id, req.user);
   if (!existing) return reply.status(404).send({ success: false, message: 'Project not found' });
   const project = await projectsService.updateStatus(req.server.prisma, req.params.id, req.body.status);
   return reply.send({ success: true, project });
 }
 
 async function remove(req, reply) {
-  const existing = await projectsService.getById(req.server.prisma, req.params.id);
+  const existing = await projectsService.getById(req.server.prisma, req.params.id, req.user);
   if (!existing) return reply.status(404).send({ success: false, message: 'Project not found' });
   await projectsService.remove(req.server.prisma, req.params.id);
   return reply.send({ success: true });

@@ -1,11 +1,49 @@
+const { getEmployeeProjectScope } = require('../../utils/employeeProjectScope');
+
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 100;
 
-async function list(prisma, query = {}) {
+const clientSelect = { select: { id: true, name: true, email: true, phone: true, company: true } };
+const assigneeInclude = {
+  assignees: {
+    include: { employee: { select: { id: true, name: true, email: true } } },
+  },
+};
+
+async function validateAssigneesAreEmployees(prisma, ids) {
+  const unique = [...new Set(ids || [])];
+  if (!unique.length) return;
+  const n = await prisma.user.count({ where: { id: { in: unique }, role: 'EMPLOYEE' } });
+  if (n !== unique.length) {
+    const err = new Error('All assignee IDs must be employees');
+    err.statusCode = 400;
+    throw err;
+  }
+}
+
+async function syncAssignees(prisma, projectId, employeeIds) {
+  await prisma.projectEmployee.deleteMany({ where: { projectId } });
+  const unique = [...new Set(employeeIds || [])];
+  if (unique.length) {
+    await prisma.projectEmployee.createMany({
+      data: unique.map((employeeId) => ({ projectId, employeeId })),
+    });
+  }
+}
+
+async function list(prisma, query = {}, user = null) {
   const { status, clientId, page = 1, limit = DEFAULT_LIMIT } = query;
   const where = {};
   if (status && String(status).trim()) where.status = String(status).trim();
   if (clientId && String(clientId).trim()) where.clientId = String(clientId).trim();
+  if (user?.role === 'EMPLOYEE') {
+    const { projectIds } = await getEmployeeProjectScope(prisma, user.id);
+    if (!projectIds.length) {
+      const take = Math.min(Math.max(1, parseInt(limit, 10) || DEFAULT_LIMIT), MAX_LIMIT);
+      return { items: [], total: 0, page: 1, limit: take, totalPages: 0 };
+    }
+    where.id = { in: projectIds };
+  }
   const take = Math.min(Math.max(1, parseInt(limit, 10) || DEFAULT_LIMIT), MAX_LIMIT);
   const skip = (Math.max(1, parseInt(page, 10) || 1) - 1) * take;
   const [items, total] = await Promise.all([
@@ -14,22 +52,29 @@ async function list(prisma, query = {}) {
       orderBy: { createdAt: 'desc' },
       skip,
       take,
-      include: { client: { select: { id: true, name: true, email: true, phone: true, company: true } } },
+      include: { client: clientSelect, ...assigneeInclude },
     }),
     prisma.project.count({ where }),
   ]);
   return { items, total, page: Math.floor(skip / take) + 1, limit: take, totalPages: Math.ceil(total / take) };
 }
 
-async function getById(prisma, id) {
-  return prisma.project.findUnique({
+async function getById(prisma, id, user = null) {
+  const project = await prisma.project.findUnique({
     where: { id },
-    include: { client: { select: { id: true, name: true, email: true, phone: true, company: true } } },
+    include: { client: clientSelect, ...assigneeInclude },
   });
+  if (!project) return null;
+  if (user?.role === 'EMPLOYEE') {
+    const ok = project.assignees.some((a) => a.employeeId === user.id);
+    if (!ok) return null;
+  }
+  return project;
 }
 
 async function create(prisma, data) {
-  return prisma.project.create({
+  if (data.assigneeIds?.length) await validateAssigneesAreEmployees(prisma, data.assigneeIds);
+  const project = await prisma.project.create({
     data: {
       name: data.name,
       description: data.description || null,
@@ -39,8 +84,13 @@ async function create(prisma, data) {
       status: data.status || 'PENDING',
       clientId: data.clientId || null,
     },
-    include: { client: { select: { id: true, name: true, email: true, phone: true, company: true } } },
+    include: { client: clientSelect, ...assigneeInclude },
   });
+  if (data.assigneeIds?.length) {
+    await syncAssignees(prisma, project.id, data.assigneeIds);
+    return getById(prisma, project.id, null);
+  }
+  return project;
 }
 
 async function update(prisma, id, data) {
@@ -52,11 +102,14 @@ async function update(prisma, id, data) {
   if (data.documentUrl !== undefined) updateData.documentUrl = data.documentUrl || null;
   if (data.status !== undefined) updateData.status = data.status;
   if (data.clientId !== undefined) updateData.clientId = data.clientId || null;
-  return prisma.project.update({
-    where: { id },
-    data: updateData,
-    include: { client: { select: { id: true, name: true, email: true, phone: true, company: true } } },
-  });
+  if (data.assigneeIds !== undefined) {
+    await validateAssigneesAreEmployees(prisma, data.assigneeIds);
+    await syncAssignees(prisma, id, data.assigneeIds);
+  }
+  if (Object.keys(updateData).length > 0) {
+    await prisma.project.update({ where: { id }, data: updateData });
+  }
+  return getById(prisma, id, null);
 }
 
 async function updateStatus(prisma, id, status) {
@@ -69,7 +122,7 @@ async function updateStatus(prisma, id, status) {
   return prisma.project.update({
     where: { id },
     data: { status },
-    include: { client: { select: { id: true, name: true, email: true, phone: true, company: true } } },
+    include: { client: clientSelect, ...assigneeInclude },
   });
 }
 
@@ -90,7 +143,7 @@ async function bulkCreateFromRows(prisma, rows) {
     try {
       let clientId = null;
       if (row.clientEmail && String(row.clientEmail).trim()) {
-        const user = await prisma.user.findUnique({
+        const user = await prisma.user.findFirst({
           where: { email: String(row.clientEmail).trim().toLowerCase(), role: 'CUSTOMER' },
         });
         if (user) clientId = user.id;
@@ -106,7 +159,7 @@ async function bulkCreateFromRows(prisma, rows) {
             : 'PENDING',
           clientId,
         },
-        include: { client: { select: { id: true, name: true, email: true, phone: true, company: true } } },
+        include: { client: clientSelect, ...assigneeInclude },
       });
       created.push(project);
     } catch (e) {

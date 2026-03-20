@@ -45,8 +45,8 @@ export default function TrackComplaintPage() {
     complaintId: string;
     status: string;
     priority: string;
+    category?: string;
     description: string;
-    productUsed: string;
     projectLocation: string;
     media?: Array<{ id: string; fileUrl: string; fileType: string }>;
     adminResponses?: unknown[];
@@ -108,7 +108,9 @@ export default function TrackComplaintPage() {
                 <Chip label={complaint.priority} variant="outlined" size="small" />
               </Box>
               <Typography variant="body2" sx={{ mb: 1 }}>{complaint.description}</Typography>
-              <Typography variant="body2" color="text.secondary">{complaint.productUsed} · {complaint.projectLocation}</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {complaint.category ? `${complaint.category} · ` : ''}{complaint.projectLocation}
+              </Typography>
               {complaint.media && complaint.media.length > 0 && (
                 <Box sx={{ mt: 2 }}>
                   <Typography variant="subtitle2" fontWeight={600} gutterBottom>Attachments</Typography>

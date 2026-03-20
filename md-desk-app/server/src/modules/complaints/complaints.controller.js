@@ -1,4 +1,5 @@
 const complaintsService = require('./complaints.service');
+const employeeProjectScope = require('../../utils/employeeProjectScope');
 const notificationsService = require('../notifications/notifications.service');
 const emailService = require('../../services/email.service');
 const { getIo } = require('../../socket');
@@ -69,11 +70,18 @@ async function myComplaints(req, reply) {
 
 async function getComplaint(req, reply) {
   const { id } = req.params;
-  const complaint = await complaintsService.getComplaintById(
-    req.server.prisma,
-    id,
-    req.user?.role === 'CUSTOMER' ? req.user.id : null
-  );
+  const role = req.user?.role;
+  if (role === 'CUSTOMER') {
+    const complaint = await complaintsService.getComplaintById(req.server.prisma, id, req.user.id);
+    return reply.send({ success: true, complaint });
+  }
+  if (role === 'EMPLOYEE') {
+    const allowed = await employeeProjectScope.canEmployeeAccessComplaint(req.server.prisma, req.user.id, id);
+    if (!allowed) return reply.status(404).send({ success: false, message: 'Complaint not found' });
+    const complaint = await complaintsService.getComplaintById(req.server.prisma, id, null);
+    return reply.send({ success: true, complaint });
+  }
+  const complaint = await complaintsService.getComplaintById(req.server.prisma, id, null);
   return reply.send({ success: true, complaint });
 }
 
@@ -89,23 +97,33 @@ async function getByComplaintId(req, reply) {
 
 async function adminList(req, reply) {
   const { page = 1, limit = 10, status, priority, city } = req.query || {};
+  let scopeWhere = null;
+  if (req.user?.role === 'EMPLOYEE') {
+    scopeWhere = await employeeProjectScope.employeeComplaintWhere(req.server.prisma, req.user.id);
+  }
   const result = await complaintsService.adminListComplaints(
     req.server.prisma,
     Number(page),
     Number(limit),
     status,
     priority,
-    city
+    city,
+    scopeWhere
   );
   return reply.send({ success: true, ...result });
 }
 
 async function highPriority(req, reply) {
   const { page = 1, limit = 20 } = req.query || {};
+  let scopeWhere = null;
+  if (req.user?.role === 'EMPLOYEE') {
+    scopeWhere = await employeeProjectScope.employeeComplaintWhere(req.server.prisma, req.user.id);
+  }
   const result = await complaintsService.getHighPriority(
     req.server.prisma,
     Number(page),
-    Number(limit)
+    Number(limit),
+    scopeWhere
   );
   return reply.send({ success: true, ...result });
 }
@@ -113,7 +131,10 @@ async function highPriority(req, reply) {
 async function updateStatus(req, reply) {
   const { id } = req.params;
   const { status, priority } = req.body || {};
-  const complaint = await complaintsService.updateStatus(req.server.prisma, id, status, priority);
+  const employeeUserId = req.user?.role === 'EMPLOYEE' ? req.user.id : null;
+  const complaint = await complaintsService.updateStatus(req.server.prisma, id, status, priority, {
+    employeeUserId,
+  });
   try {
     await notificationsService.create(req.server.prisma, {
       userId: complaint.userId,

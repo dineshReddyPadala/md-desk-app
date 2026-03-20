@@ -63,9 +63,9 @@ export default function ComplaintsPage() {
     status: string;
     priority: string;
     category?: string;
-    productUsed: string;
     description: string;
     user?: { name: string; email: string };
+    project?: { id: string; name: string } | null;
     createdAt: string;
   }>;
 
@@ -74,7 +74,7 @@ export default function ComplaintsPage() {
     queryFn: async () => (await complaintsApi.getById(detailId!)).data,
     enabled: !!detailId,
   });
-  const complaint = detailData?.complaint as { complaintId: string; status: string; priority: string; category?: string; description: string; productUsed: string; projectLocation: string; user?: { name: string; email: string } } | undefined;
+  const complaint = detailData?.complaint as { complaintId: string; status: string; priority: string; category?: string; description: string; projectLocation: string; user?: { name: string; email: string } } | undefined;
   const filteredItems = search.trim()
     ? items.filter(
         (row) =>
@@ -124,6 +124,7 @@ export default function ComplaintsPage() {
             <TableRow sx={{ bgcolor: 'grey.50' }}>
               <TableCell sx={{ fontWeight: 600 }}>Complaint ID</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Customer</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Project</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Category</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Priority</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
@@ -134,12 +135,13 @@ export default function ComplaintsPage() {
           <TableBody>
             {isLoading
               ? Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}><TableCell colSpan={7}><Skeleton height={48} /></TableCell></TableRow>
+                  <TableRow key={i}><TableCell colSpan={8}><Skeleton height={48} /></TableCell></TableRow>
                 ))
               : filteredItems.map((row) => (
                   <TableRow key={row.id} hover>
                     <TableCell sx={{ fontFamily: 'monospace' }}>{row.complaintId}</TableCell>
                     <TableCell>{row.user?.name || '—'}<Typography variant="caption" display="block" color="text.secondary">{row.user?.email}</Typography></TableCell>
+                    <TableCell>{row.project?.name || '—'}</TableCell>
                     <TableCell>{row.category || '—'}</TableCell>
                     <TableCell><Chip label={row.priority} color={priorityColors[row.priority] || 'default'} size="small" /></TableCell>
                     <TableCell><Chip label={row.status.replace('_', ' ')} color={statusColors[row.status] || 'default'} size="small" /></TableCell>
@@ -172,8 +174,8 @@ export default function ComplaintsPage() {
               <Typography variant="body1" fontFamily="monospace" gutterBottom>{complaint.complaintId}</Typography>
               <Typography variant="subtitle2" color="text.secondary">Customer</Typography>
               <Typography variant="body1" gutterBottom>{complaint.user?.name} · {complaint.user?.email}</Typography>
-              <Typography variant="subtitle2" color="text.secondary">Category · Product & location</Typography>
-              <Typography variant="body1" gutterBottom>{complaint.category ? `${complaint.category} · ` : ''}{complaint.productUsed} · {complaint.projectLocation}</Typography>
+              <Typography variant="subtitle2" color="text.secondary">Category · Location</Typography>
+              <Typography variant="body1" gutterBottom>{complaint.category ? `${complaint.category} · ` : ''}{complaint.projectLocation}</Typography>
               <Typography variant="subtitle2" color="text.secondary">Description</Typography>
               <Typography variant="body1" sx={{ mb: 2 }}>{complaint.description}</Typography>
               <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>

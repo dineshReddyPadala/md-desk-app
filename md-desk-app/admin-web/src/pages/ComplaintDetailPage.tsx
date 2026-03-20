@@ -47,8 +47,8 @@ export default function ComplaintDetailPage() {
     status: string;
     priority: string;
     category?: string;
-    productUsed: string;
     projectLocation: string;
+    project?: { id: string; name: string } | null;
     description: string;
     name?: string;
     phone?: string;
@@ -84,8 +84,15 @@ export default function ComplaintDetailPage() {
             <Typography variant="body2">{displayPhone} · {displayCity}</Typography>
           </Grid>
           <Grid item xs={12} md={6}>
-            <Typography color="textSecondary">Category / Product / Location</Typography>
-            <Typography>{complaint.category ? `${complaint.category} · ` : ''}{complaint.productUsed} · {complaint.projectLocation}</Typography>
+            <Typography color="textSecondary">Project</Typography>
+            <Typography>{complaint.project?.name || '—'}</Typography>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Typography color="textSecondary">Category / Location</Typography>
+            <Typography>
+              {complaint.category ? `${complaint.category} · ` : ''}
+              {complaint.projectLocation}
+            </Typography>
           </Grid>
           <Grid item xs={12}>
             <Typography color="textSecondary">Description</Typography>

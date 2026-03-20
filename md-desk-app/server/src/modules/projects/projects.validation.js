@@ -10,6 +10,7 @@ const createProjectSchema = {
       documentUrl: { type: 'string' },
       status: { type: 'string', enum: ['PENDING', 'IN_PROGRESS', 'COMPLETED'] },
       clientId: { type: 'string' },
+      assigneeIds: { type: 'array', items: { type: 'string' } },
     },
   },
 };
@@ -26,6 +27,7 @@ const updateProjectSchema = {
       documentUrl: { type: 'string' },
       status: { type: 'string', enum: ['PENDING', 'IN_PROGRESS', 'COMPLETED'] },
       clientId: { type: 'string' },
+      assigneeIds: { type: 'array', items: { type: 'string' } },
     },
   },
 };

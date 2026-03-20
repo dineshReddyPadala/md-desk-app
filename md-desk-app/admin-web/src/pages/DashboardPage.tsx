@@ -41,24 +41,23 @@ export default function DashboardPage() {
   const { isEmployee } = useStaffRole();
 
   const { data: summary, isLoading } = useQuery({
-    queryKey: ['dashboard-summary'],
+    queryKey: ['dashboard-summary', isEmployee],
     queryFn: async () => (await dashboardApi.summary()).data,
   });
   const { data: regionData } = useQuery({
-    queryKey: ['dashboard-region'],
+    queryKey: ['dashboard-region', isEmployee],
     queryFn: async () => (await dashboardApi.regionStats()).data,
   });
   const { data: projectComplaintData } = useQuery({
-    queryKey: ['dashboard-project-complaints'],
+    queryKey: ['dashboard-project-complaints', isEmployee],
     queryFn: async () => (await dashboardApi.projectComplaintStats()).data,
-    enabled: !isEmployee,
   });
   const { data: statusData } = useQuery({
-    queryKey: ['dashboard-status'],
+    queryKey: ['dashboard-status', isEmployee],
     queryFn: async () => (await dashboardApi.statusStats()).data,
   });
   const { data: creationData } = useQuery({
-    queryKey: ['dashboard-creation', 7],
+    queryKey: ['dashboard-creation', 7, isEmployee],
     queryFn: async () => (await dashboardApi.creationStats({ days: 7 })).data,
   });
 
@@ -81,7 +80,7 @@ export default function DashboardPage() {
     labels: projectComplaintStats.slice(0, 12).map((x) => x.project),
     datasets: [
       {
-        label: 'Complaints (from assigned client)',
+        label: 'Complaints linked to project',
         data: projectComplaintStats.slice(0, 12).map((x) => x.count),
         backgroundColor: 'rgba(46, 125, 50, 0.75)',
         borderRadius: 6,
@@ -133,7 +132,7 @@ export default function DashboardPage() {
   const allKpiCards = [
     { label: 'Total Complaints', value: summary.total, icon: <AssignmentIcon />, color: '#0097d7', employeeOk: true },
     { label: 'Total Clients', value: summary.totalClients ?? 0, icon: <PeopleIcon />, color: '#5c6bc0', employeeOk: false },
-    { label: 'Ongoing Projects', value: summary.ongoingProjects ?? 0, icon: <FolderIcon />, color: '#26a69a', employeeOk: false },
+    { label: 'Ongoing Projects', value: summary.ongoingProjects ?? 0, icon: <FolderIcon />, color: '#26a69a', employeeOk: true },
     { label: 'Received', value: summary.received ?? 0, icon: <InboxIcon />, color: '#0097d7', employeeOk: true },
     { label: 'Under Review', value: summary.underReview ?? 0, icon: <PendingActionsIcon />, color: '#f37336', employeeOk: true },
     { label: 'In Progress', value: summary.inProgress ?? 0, icon: <BuildCircleIcon />, color: '#ffb74d', employeeOk: true },
@@ -194,7 +193,7 @@ export default function DashboardPage() {
           </Grid>
         ))}
 
-        {summary.activitySummary && !isEmployee && (
+        {summary.activitySummary && (
           <Grid item xs={12} md={6}>
             <Paper sx={{ p: 3 }}>
               <Typography variant="h6" fontWeight={600} gutterBottom>
@@ -258,21 +257,21 @@ export default function DashboardPage() {
             </Box>
           </Paper>
         </Grid>
-        {!isEmployee && (
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3, height: 360 }}>
-              <Typography variant="h6" fontWeight={600} gutterBottom>
-                Complaints by Project
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                Count of complaints from each project&apos;s assigned client
-              </Typography>
-              <Box sx={{ height: 260, mt: 1 }}>
-                <Bar data={projectComplaintChart} options={chartOptions} />
-              </Box>
-            </Paper>
-          </Grid>
-        )}
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 3, height: 360 }}>
+            <Typography variant="h6" fontWeight={600} gutterBottom>
+              Complaints by Project
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+              {isEmployee
+                ? 'Complaints linked to your assigned projects (and legacy client complaints in scope)'
+                : 'Complaints with a linked project, plus unlinked complaints from project clients'}
+            </Typography>
+            <Box sx={{ height: 260, mt: 1 }}>
+              <Bar data={projectComplaintChart} options={chartOptions} />
+            </Box>
+          </Paper>
+        </Grid>
       </Grid>
     </Box>
   );

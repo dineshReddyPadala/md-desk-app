@@ -1,17 +1,44 @@
-async function getSummary(prisma) {
+function mergeComplaintWhere(scopeComplaintWhere, extra = {}) {
+  if (!scopeComplaintWhere) {
+    return Object.keys(extra).length ? extra : {};
+  }
+  if (!extra || Object.keys(extra).length === 0) return scopeComplaintWhere;
+  return { AND: [scopeComplaintWhere, extra] };
+}
+
+async function getSummary(prisma, options = {}) {
+  const { scopeComplaintWhere = null, assignedProjectIds = null } = options;
+  const w = (extra) => mergeComplaintWhere(scopeComplaintWhere, extra);
+
   const statusCounts = await prisma.complaint.groupBy({
     by: ['status'],
+    where: w(),
     _count: { id: true },
   });
   const byStatus = Object.fromEntries(statusCounts.map((x) => [x.status, x._count.id]));
   const total = statusCounts.reduce((sum, x) => sum + x._count.id, 0);
+
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
   const [highPriority, totalClients, ongoingProjects, recentComplaints, recentProjects] = await Promise.all([
-    prisma.complaint.count({ where: { priority: 'HIGH' } }),
-    prisma.user.count({ where: { role: 'CUSTOMER' } }),
-    prisma.project.count({ where: { status: 'IN_PROGRESS' } }),
-    prisma.complaint.count({ where: { createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } } }),
-    prisma.project.count({ where: { updatedAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } } }),
+    prisma.complaint.count({ where: w({ priority: 'HIGH' }) }),
+    scopeComplaintWhere
+      ? Promise.resolve(0)
+      : prisma.user.count({ where: { role: 'CUSTOMER' } }),
+    scopeComplaintWhere && assignedProjectIds?.length
+      ? prisma.project.count({ where: { id: { in: assignedProjectIds }, status: 'IN_PROGRESS' } })
+      : scopeComplaintWhere
+        ? Promise.resolve(0)
+        : prisma.project.count({ where: { status: 'IN_PROGRESS' } }),
+    prisma.complaint.count({ where: w({ createdAt: { gte: weekAgo } }) }),
+    scopeComplaintWhere && assignedProjectIds?.length
+      ? prisma.project.count({
+          where: { id: { in: assignedProjectIds }, updatedAt: { gte: weekAgo } },
+        })
+      : scopeComplaintWhere
+        ? Promise.resolve(0)
+        : prisma.project.count({ where: { updatedAt: { gte: weekAgo } } }),
   ]);
+
   return {
     total,
     pending: (byStatus.RECEIVED || 0) + (byStatus.UNDER_REVIEW || 0) + (byStatus.IN_PROGRESS || 0),
@@ -29,37 +56,54 @@ async function getSummary(prisma) {
   };
 }
 
-async function getRegionStats(prisma) {
+async function getRegionStats(prisma, scopeComplaintWhere = null) {
   const list = await prisma.complaint.groupBy({
     by: ['city'],
     _count: { id: true },
-    where: { city: { not: null } },
+    where: mergeComplaintWhere(scopeComplaintWhere, { city: { not: null } }),
     orderBy: { _count: { id: 'desc' } },
   });
   return list.map((x) => ({ city: x.city || 'Unknown', count: x._count.id }));
 }
 
-/** Complaints from each project's assigned client (client–project mapping). */
-async function getProjectComplaintStats(prisma) {
+/** Complaints linked to each project (by complaint.project_id). Legacy complaints without project are not counted per project. */
+async function getProjectComplaintStats(prisma, projectIdsFilter = null) {
+  if (Array.isArray(projectIdsFilter) && projectIdsFilter.length === 0) {
+    return [];
+  }
+  const projectWhere = projectIdsFilter?.length ? { id: { in: projectIdsFilter } } : { clientId: { not: null } };
   const projects = await prisma.project.findMany({
-    where: { clientId: { not: null } },
+    where: projectWhere,
     select: { id: true, name: true, clientId: true },
   });
   const rows = await Promise.all(
     projects.map(async (p) => {
-      const count = await prisma.complaint.count({ where: { userId: p.clientId } });
+      const count = await prisma.complaint.count({ where: { projectId: p.id } });
       return { project: p.name, projectId: p.id, count };
     })
   );
+  if (!projectIdsFilter?.length) {
+    const legacyClients = [...new Set(projects.map((p) => p.clientId).filter(Boolean))];
+    let legacyExtra = 0;
+    if (legacyClients.length) {
+      legacyExtra = await prisma.complaint.count({
+        where: { projectId: null, userId: { in: legacyClients } },
+      });
+    }
+    if (legacyExtra > 0) {
+      rows.push({ project: 'Not linked to project', projectId: '_legacy', count: legacyExtra });
+    }
+  }
   return rows.sort((a, b) => b.count - a.count);
 }
 
 const STATUS_ORDER = ['RECEIVED', 'UNDER_REVIEW', 'IN_PROGRESS', 'RESOLVED'];
 const STATUS_LABELS = { RECEIVED: 'Received', UNDER_REVIEW: 'Under Review', IN_PROGRESS: 'In Progress', RESOLVED: 'Resolved' };
 
-async function getStatusStats(prisma) {
+async function getStatusStats(prisma, scopeComplaintWhere = null) {
   const statusCounts = await prisma.complaint.groupBy({
     by: ['status'],
+    where: mergeComplaintWhere(scopeComplaintWhere, {}),
     _count: { id: true },
   });
   const byStatus = Object.fromEntries(statusCounts.map((x) => [x.status, x._count.id]));
@@ -70,11 +114,11 @@ async function getStatusStats(prisma) {
   }));
 }
 
-async function getCreationStats(prisma, days = 7) {
+async function getCreationStats(prisma, days = 7, scopeComplaintWhere = null) {
   const now = new Date();
   const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - (days - 1), 0, 0, 0, 0));
   const complaints = await prisma.complaint.findMany({
-    where: { createdAt: { gte: start } },
+    where: mergeComplaintWhere(scopeComplaintWhere, { createdAt: { gte: start } }),
     select: { createdAt: true },
   });
   const byDay = {};
@@ -117,4 +161,11 @@ async function getCustomerSummary(prisma, userId) {
   return { activeProjects, complaintStats };
 }
 
-module.exports = { getSummary, getRegionStats, getProjectComplaintStats, getStatusStats, getCreationStats, getCustomerSummary };
+module.exports = {
+  getSummary,
+  getRegionStats,
+  getProjectComplaintStats,
+  getStatusStats,
+  getCreationStats,
+  getCustomerSummary,
+};

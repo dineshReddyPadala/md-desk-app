@@ -8,6 +8,7 @@ const createComplaintSchema = {
       city: { type: 'string' },
       product_used: { type: 'string' },
       project_location: { type: 'string' },
+      project_id: { type: 'string' },
       description: { type: 'string' },
       category: { type: 'string', enum: ['PRODUCT', 'SERVICE', 'DELIVERY', 'TECHNICAL'] },
     },
