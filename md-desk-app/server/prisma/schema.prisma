@@ -27,6 +27,10 @@ model User {
   notifications        Notification[]
   projects             Project[]
   projectAssignments   ProjectEmployee[]
+  chatParticipants     ChatParticipant[]
+  chatMessagesSent     ChatMessage[]      @relation("ChatMessageSender")
+  chatRoomsAsLow       ChatRoom[]         @relation("ChatRoomUserLow")
+  chatRoomsAsHigh      ChatRoom[]         @relation("ChatRoomUserHigh")
 
   @@map("users")
 }
@@ -173,10 +177,74 @@ model Project {
   client      User?             @relation(fields: [clientId], references: [id], onDelete: SetNull)
   assignees   ProjectEmployee[]
   complaints  Complaint[]
+  chatRooms   ChatRoom[]
 
   @@index([clientId])
   @@index([status])
   @@map("projects")
+}
+
+enum ChatRoomType {
+  PROJECT_GROUP
+  DIRECT
+}
+
+enum ChatMessageKind {
+  TEXT
+  FILE
+  VOICE
+}
+
+model ChatRoom {
+  id         String       @id @default(cuid())
+  type       ChatRoomType @map("type")
+  projectId  String?      @map("project_id")
+  userLowId  String?      @map("user_low_id")
+  userHighId String?      @map("user_high_id")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+
+  project      Project?            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userLow      User?               @relation("ChatRoomUserLow", fields: [userLowId], references: [id], onDelete: Cascade)
+  userHigh     User?               @relation("ChatRoomUserHigh", fields: [userHighId], references: [id], onDelete: Cascade)
+  messages     ChatMessage[]
+  participants ChatParticipant[]
+
+  @@unique([userLowId, userHighId])
+  @@index([projectId, type])
+  @@map("chat_rooms")
+}
+
+model ChatParticipant {
+  id         String    @id @default(cuid())
+  roomId     String    @map("room_id")
+  userId     String    @map("user_id")
+  lastReadAt DateTime? @map("last_read_at")
+  joinedAt   DateTime  @default(now()) @map("joined_at")
+
+  room ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@index([userId])
+  @@map("chat_participants")
+}
+
+model ChatMessage {
+  id             String          @id @default(cuid())
+  roomId         String          @map("room_id")
+  senderId       String          @map("sender_id")
+  kind           ChatMessageKind @default(TEXT) @map("kind")
+  body           String?         @map("body")
+  attachmentUrl  String?         @map("attachment_url")
+  attachmentMime String?         @map("attachment_mime")
+  createdAt      DateTime        @default(now()) @map("created_at")
+
+  room   ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  sender User     @relation("ChatMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([roomId, createdAt])
+  @@map("chat_messages")
 }
 
 model ProjectEmployee {

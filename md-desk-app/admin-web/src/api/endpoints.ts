@@ -18,6 +18,8 @@ export const dashboardApi = {
       pending: number;
       resolved: number;
       highPriority: number;
+      mediumPriority: number;
+      lowPriority: number;
       received: number;
       underReview: number;
       inProgress: number;
@@ -158,7 +160,7 @@ export const projectsApi = {
   },
 };
 
-export type UploadScope = 'media' | 'image';
+export type UploadScope = 'media' | 'image' | 'chat';
 
 export const uploadApi = {
   upload: (file: File, options?: { scope?: UploadScope }) => {
@@ -170,6 +172,62 @@ export const uploadApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+};
+
+export type ChatMessageDto = {
+  id: string;
+  roomId: string;
+  senderId: string;
+  kind: 'TEXT' | 'FILE' | 'VOICE';
+  body?: string | null;
+  attachmentUrl?: string | null;
+  attachmentMime?: string | null;
+  createdAt: string;
+  sender?: { id: string; name: string; role?: string };
+  deliveryStatus?: 'delivered' | 'seen' | null;
+};
+
+export type ChatRoomDto = {
+  id: string;
+  type: 'PROJECT_GROUP' | 'DIRECT';
+  projectId?: string | null;
+  project?: { id: string; name: string; status: string } | null;
+  participants?: Array<{ userId: string; user: { id: string; name: string; role: string; email: string } }>;
+};
+
+export type ChatAdminProjectRow = {
+  projectId: string;
+  projectName: string;
+  status: string;
+  client: { id: string; name: string; email?: string | null } | null;
+  roomId: string | null;
+  lastMessage: {
+    id: string;
+    body?: string | null;
+    kind: string;
+    createdAt: string;
+    sender?: { id: string; name: string };
+  } | null;
+};
+
+export const chatApi = {
+  rooms: () => api.get<{ success: boolean; rooms: unknown[] }>('/chat/rooms'),
+  contacts: () =>
+    api.get<{ success: boolean; users: Array<{ id: string; name: string; role: string; email: string }> }>('/chat/contacts'),
+  projectRoom: (projectId: string) =>
+    api.get<{ success: boolean; room: ChatRoomDto }>(`/chat/projects/${projectId}/room`),
+  direct: (otherUserId: string) =>
+    api.post<{ success: boolean; room: ChatRoomDto }>('/chat/direct', { otherUserId }),
+  messages: (roomId: string, params?: { before?: string; limit?: number }) =>
+    api.get<{ success: boolean; messages: ChatMessageDto[]; nextBefore: string | null }>(`/chat/rooms/${roomId}/messages`, {
+      params,
+    }),
+  send: (
+    roomId: string,
+    body: { kind?: 'TEXT' | 'FILE' | 'VOICE'; body?: string; attachmentUrl?: string; attachmentMime?: string }
+  ) => api.post<{ success: boolean; message: ChatMessageDto }>(`/chat/rooms/${roomId}/messages`, body),
+  markRead: (roomId: string) => api.post<{ success: boolean }>(`/chat/rooms/${roomId}/read`),
+  adminProjects: () => api.get<{ success: boolean; items: ChatAdminProjectRow[] }>('/chat/admin/projects'),
 };
 
 export type EmployeeDto = { id: string; name: string; email: string; mobile: string; designation?: string | null; createdAt: string; updatedAt: string };

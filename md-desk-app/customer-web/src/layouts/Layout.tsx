@@ -22,6 +22,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import MessageIcon from '@mui/icons-material/Message';
+import ChatIcon from '@mui/icons-material/Chat';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -38,6 +39,7 @@ const nav = [
   { to: '/complaints', label: 'Complaints', icon: <ReportProblemIcon /> },
   { to: '/track', label: 'Track Complaint', icon: <TrackChangesIcon /> },
   { to: '/message-md', label: 'Message MD', icon: <MessageIcon /> },
+  { to: '/chat', label: 'Project chat', icon: <ChatIcon /> },
   { to: '/products', label: 'Products', icon: <InventoryIcon /> },
   { to: '/dealers', label: 'Dealer Locator', icon: <LocationOnIcon /> },
 ];

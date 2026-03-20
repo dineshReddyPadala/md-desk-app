@@ -14,6 +14,7 @@ import DealersPage from './pages/DealersPage';
 import ProjectsPage from './pages/ProjectsPage';
 import ClientsPage from './pages/ClientsPage';
 import EmployeesPage from './pages/EmployeesPage';
+import ChatPage from './pages/ChatPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { token, isLoading } = useAuth();
@@ -50,6 +51,7 @@ export default function App() {
         <Route path="complaints" element={<ComplaintsPage />} />
         <Route path="complaints/:id" element={<ComplaintDetailPage />} />
         <Route path="projects" element={<ProjectsPage />} />
+        <Route path="chat" element={<ChatPage />} />
         <Route path="products" element={<ProductsPage />} />
         <Route path="dealers" element={<DealersPage />} />
         <Route element={<AdminOnlyRoute />}>

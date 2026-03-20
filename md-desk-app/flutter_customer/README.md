@@ -9,6 +9,9 @@ Flutter customer app for MD Desk. Scaffold with auth (login/register), navigatio
 - **provider** – State management (e.g. auth)
 - **http** – HTTP client for API calls
 - **shared_preferences** – Persist JWT
+- **socket_io_client** – Realtime project / direct chat (`chat:join`, `chat:message`)
+- **url_launcher** – Open PDF / voice attachments from chat
+- **file_picker** – Chat file uploads (`scope=chat`)
 
 ## Project Structure
 
@@ -26,6 +29,7 @@ flutter_customer/
 │       ├── raise_complaint_screen.dart
 │       ├── track_complaint_screen.dart
 │       ├── message_md_screen.dart
+│       ├── project_chat_screen.dart  # Project group + direct chat (REST + Socket.IO)
 │       ├── products_screen.dart
 │       └── dealer_locator_screen.dart
 ├── pubspec.yaml
@@ -68,13 +72,18 @@ Choose a device/emulator when prompted. For web: `flutter run -d chrome`.
 | `/raise-complaint` | Raise complaint | Placeholder; integrate multipart form + `POST /complaints` using `AuthProvider.token`. |
 | `/track` | Track complaint | Placeholder; integrate `GET /complaints/track/:complaintId` and status timeline. |
 | `/message-md` | Message MD | Placeholder; integrate `POST /messages` with subject and message. |
+| `/chat` | Project chat | Project threads (`GET /chat/projects/:id/room`), staff DMs (`POST /chat/direct`), messages, `POST /upload?scope=chat`, Socket.IO on same host as API. |
 | `/products` | Products | Placeholder; integrate `GET /products`. |
 | `/dealers` | Dealer locator | Placeholder; integrate `GET /dealers?city=`; optional map using `location_lat`/`location_long`. |
 
 ## Auth
 
 - **AuthProvider** (in `lib/auth_provider.dart`): Holds `token`, `user`; methods `login`, `register`, `clearToken`. Token is saved with `SharedPreferences` and applied to API requests via `ApiClient`.
-- **ApiClient** (in `lib/api/client.dart`): `baseUrl`, optional `token`; `get(path)`, `post(path, body)`; sets `Authorization: Bearer` when token is set; throws `ApiException` on non-2xx.
+- **ApiClient** (in `lib/api/client.dart`): `baseUrl`, optional `token`; `get(path, query: …)`, `post(path, body)`, `uploadFile(…)` for multipart; `socketOrigin(baseUrl)` for Socket.IO; sets `Authorization: Bearer` when token is set; throws `ApiException` on non-2xx.
+
+### Chat (mobile)
+
+Uses the same backend as customer web: `/dashboard/customer-summary` (project list), `/chat/*`, and Socket.IO at `{apiOrigin}/socket.io` with `auth: { token: <JWT> }`. After `flutter pub get`, set **API base URL** in `auth_provider.dart` (`_baseUrl`). On Android emulator, `localhost` points to the emulator itself—use `http://10.0.2.2:3000/api/v1` to reach the host machine, or your LAN IP for a physical device.
 
 ## Integration Notes
 

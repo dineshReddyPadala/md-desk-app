@@ -10,6 +10,7 @@ const notificationsRoutes = require('../modules/notifications/notifications.rout
 const clientsAdminRoutes = require('../modules/clients/clients.routes');
 const projectsAdminRoutes = require('../modules/projects/projects.routes');
 const employeesRoutes = require('../modules/employees/employees.routes');
+const chatRoutes = require('../modules/chat/chat.routes');
 
 const complaintsController = require('../modules/complaints/complaints.controller');
 const productsController = require('../modules/products/products.controller');
@@ -46,6 +47,7 @@ async function registerRoutes(fastify) {
   fastify.register(clientsAdminRoutes, { prefix: '/admin/clients' });
   fastify.register(projectsAdminRoutes, { prefix: '/admin/projects' });
   fastify.register(employeesRoutes, { prefix: '/admin/employees' });
+  fastify.register(chatRoutes, { prefix: '/chat' });
 
   fastify.register(async (instance) => {
     const admin = composePreHandlers(instance.authenticateJWT, instance.authorizeRole('ADMIN'));

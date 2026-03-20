@@ -19,8 +19,11 @@ async function getSummary(prisma, options = {}) {
   const total = statusCounts.reduce((sum, x) => sum + x._count.id, 0);
 
   const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const [highPriority, totalClients, ongoingProjects, recentComplaints, recentProjects] = await Promise.all([
+  const [highPriority, mediumPriority, lowPriority, totalClients, ongoingProjects, recentComplaints, recentProjects] =
+    await Promise.all([
     prisma.complaint.count({ where: w({ priority: 'HIGH' }) }),
+    prisma.complaint.count({ where: w({ priority: 'MEDIUM' }) }),
+    prisma.complaint.count({ where: w({ priority: 'LOW' }) }),
     scopeComplaintWhere
       ? Promise.resolve(0)
       : prisma.user.count({ where: { role: 'CUSTOMER' } }),
@@ -44,6 +47,8 @@ async function getSummary(prisma, options = {}) {
     pending: (byStatus.RECEIVED || 0) + (byStatus.UNDER_REVIEW || 0) + (byStatus.IN_PROGRESS || 0),
     resolved: byStatus.RESOLVED || 0,
     highPriority,
+    mediumPriority,
+    lowPriority,
     received: byStatus.RECEIVED || 0,
     underReview: byStatus.UNDER_REVIEW || 0,
     inProgress: byStatus.IN_PROGRESS || 0,

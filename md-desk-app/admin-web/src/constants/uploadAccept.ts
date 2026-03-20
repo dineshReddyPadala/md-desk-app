@@ -5,6 +5,9 @@ export const ACCEPT_FULL_MEDIA =
 /** Product / dealer image uploads only. */
 export const ACCEPT_IMAGES_ONLY = '.jpg,.jpeg,.png,.gif,.webp,.svg,image/*';
 
+/** Chat attachments: PDF, images, voice. */
+export const ACCEPT_CHAT = '.pdf,.jpg,.jpeg,.png,.gif,.webp,.svg,.mp3,.wav,.aac,.ogg,.webm,audio/*,image/*,application/pdf';
+
 const MEDIA_EXT = new Set([
   'pdf',
   'doc',
@@ -35,6 +38,8 @@ const MEDIA_EXT = new Set([
 
 const IMAGE_EXT = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']);
 
+const CHAT_EXT = new Set(['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'mp3', 'wav', 'aac', 'ogg', 'webm']);
+
 const MSG_MEDIA =
   'Invalid file type. Allowed: PDF, Word, Excel, PowerPoint, TXT, CSV, images (JPEG, PNG, GIF, WebP, SVG), videos (MP4, AVI, MOV, MKV, WebM), audio (MP3, WAV, AAC, OGG), ZIP.';
 
@@ -63,6 +68,19 @@ export function validateFilesImageOnly(files: FileList | File[]): string | null 
     const e = extOf(f.name);
     if (!e || !IMAGE_EXT.has(e)) {
       return `"${f.name}" is not allowed here. ${MSG_IMAGE}`;
+    }
+  }
+  return null;
+}
+
+const MSG_CHAT =
+  'Invalid file type for chat. Allowed: PDF; images (JPEG, PNG, GIF, WebP, SVG); audio (MP3, WAV, AAC, OGG, WebM).';
+
+export function validateFilesChat(files: FileList | File[]): string | null {
+  for (const f of Array.from(files)) {
+    const e = extOf(f.name);
+    if (!e || !CHAT_EXT.has(e)) {
+      return `"${f.name}" is not allowed here. ${MSG_CHAT}`;
     }
   }
   return null;

@@ -1,6 +1,7 @@
 const { Server } = require('socket.io');
 const jwt = require('jsonwebtoken');
 const config = require('../config');
+const chatService = require('../modules/chat/chat.service');
 
 /** Socket.IO instance (set after listen). Controllers use getIo() instead of Fastify decorator (decorators cannot be added after start). */
 let ioInstance = null;
@@ -50,6 +51,34 @@ function attachSocket(fastify) {
       socket.join('admin');
     }
     fastify.log.info({ userId, role: socket.role }, 'Socket connected');
+
+    socket.on('chat:join', async (payload, ack) => {
+      const roomId = payload && payload.roomId;
+      if (!roomId) {
+        if (typeof ack === 'function') ack({ ok: false, message: 'roomId required' });
+        return;
+      }
+      try {
+        const prisma = fastify.prisma;
+        const user = { id: socket.userId, role: socket.role };
+        const result = await chatService.canJoinChatRoom(prisma, user, roomId);
+        if (!result.ok) {
+          if (typeof ack === 'function') ack({ ok: false, message: result.message || 'Forbidden' });
+          return;
+        }
+        socket.join(`chat:${roomId}`);
+        if (typeof ack === 'function') ack({ ok: true });
+      } catch (err) {
+        fastify.log.error({ err, roomId }, 'chat:join failed');
+        if (typeof ack === 'function') ack({ ok: false, message: err.message || 'Error' });
+      }
+    });
+
+    socket.on('chat:leave', (payload) => {
+      const roomId = payload && payload.roomId;
+      if (roomId) socket.leave(`chat:${roomId}`);
+    });
+
     socket.on('disconnect', () => {
       fastify.log.info({ userId }, 'Socket disconnected');
     });

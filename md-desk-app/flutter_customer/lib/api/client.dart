@@ -11,8 +11,18 @@ class ApiClient {
         if (token != null && token!.isNotEmpty) 'Authorization': 'Bearer $token',
       };
 
-  Future<Map<String, dynamic>> get(String path) async {
-    final r = await http.get(Uri.parse('$baseUrl$path'), headers: _headers);
+  /// HTTP origin for Socket.IO (same host as REST API).
+  static String socketOrigin(String apiBaseUrl) {
+    final u = Uri.parse(apiBaseUrl);
+    return '${u.scheme}://${u.authority}';
+  }
+
+  Future<Map<String, dynamic>> get(String path, {Map<String, String>? query}) async {
+    var uri = Uri.parse('$baseUrl$path');
+    if (query != null && query.isNotEmpty) {
+      uri = uri.replace(queryParameters: {...uri.queryParameters, ...query});
+    }
+    final r = await http.get(uri, headers: _headers);
     return _handleResponse(r);
   }
 
@@ -50,6 +60,26 @@ class ApiClient {
     if (files != null) {
       req.files.addAll(files);
     }
+    final streamed = await req.send();
+    final r = await http.Response.fromStream(streamed);
+    return _handleResponse(r);
+  }
+
+  /// Single-file upload (e.g. `/upload` with `scope=chat`).
+  Future<Map<String, dynamic>> uploadFile(
+    String path, {
+    required http.MultipartFile file,
+    Map<String, String>? query,
+  }) async {
+    var uri = Uri.parse('$baseUrl$path');
+    if (query != null && query.isNotEmpty) {
+      uri = uri.replace(queryParameters: query);
+    }
+    final req = http.MultipartRequest('POST', uri);
+    if (token != null && token!.isNotEmpty) {
+      req.headers['Authorization'] = 'Bearer $token';
+    }
+    req.files.add(file);
     final streamed = await req.send();
     final r = await http.Response.fromStream(streamed);
     return _handleResponse(r);

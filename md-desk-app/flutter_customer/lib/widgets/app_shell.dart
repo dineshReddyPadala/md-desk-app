@@ -21,6 +21,7 @@ class _AppShellState extends State<AppShell> {
     (path: '/complaints', label: 'Complaints', icon: Icons.report_problem),
     (path: '/track', label: 'Track Complaint', icon: Icons.track_changes),
     (path: '/message-md', label: 'Message MD', icon: Icons.message),
+    (path: '/chat', label: 'Project chat', icon: Icons.chat_bubble_outline),
     (path: '/products', label: 'Products', icon: Icons.inventory),
     (path: '/dealers', label: 'Dealer Locator', icon: Icons.location_on),
   ];

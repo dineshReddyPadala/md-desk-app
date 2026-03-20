@@ -26,6 +26,7 @@ import StorefrontIcon from '@mui/icons-material/Storefront';
 import FolderIcon from '@mui/icons-material/Folder';
 import PeopleIcon from '@mui/icons-material/People';
 import BadgeIcon from '@mui/icons-material/Badge';
+import ChatIcon from '@mui/icons-material/Chat';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonIcon from '@mui/icons-material/Person';
 import NotificationsIcon from '@mui/icons-material/Notifications';
@@ -37,6 +38,7 @@ import { useSocket } from '../socket/useSocket';
 const allNavItems = [
   { to: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
   { to: '/complaints', label: 'Complaints', icon: <ReportProblemIcon /> },
+  { to: '/chat', label: 'Chat', icon: <ChatIcon /> },
   { to: '/messages', label: 'Messages', icon: <MessageIcon />, adminOnly: true },
   { to: '/reports', label: 'Reports', icon: <BarChartIcon />, adminOnly: true },
   { to: '/projects', label: 'Project Management', icon: <FolderIcon /> },

@@ -73,12 +73,34 @@ class _TrackComplaintScreenState extends State<TrackComplaintScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final trimmed = _complaintIdController.text.trim();
+    final resultsMatchInput = trimmed == _searchId;
+    final showResults = _searchId.isNotEmpty && resultsMatchInput;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.arrow_back),
+                tooltip: 'Back',
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go('/dashboard');
+                  }
+                },
+              ),
+              TextButton(
+                onPressed: () => context.go('/dashboard'),
+                child: const Text('Dashboard'),
+              ),
+            ],
+          ),
           Text('Track Complaint', style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           Text(
@@ -94,9 +116,13 @@ class _TrackComplaintScreenState extends State<TrackComplaintScreen> {
                 children: [
                   Text('Complaint ID', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
                   const SizedBox(height: 8),
-                  Row(
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      Expanded(
+                      SizedBox(
+                        width: 280,
                         child: TextField(
                           controller: _complaintIdController,
                           decoration: const InputDecoration(
@@ -104,20 +130,34 @@ class _TrackComplaintScreenState extends State<TrackComplaintScreen> {
                             border: OutlineInputBorder(),
                           ),
                           onSubmitted: (_) => _track(),
+                          onChanged: (_) => setState(() {}),
                         ),
                       ),
-                      const SizedBox(width: 12),
                       FilledButton(
                         onPressed: _loading ? null : _track,
                         child: Text(_loading ? 'Searching…' : 'Track'),
                       ),
+                      if (_searchId.isNotEmpty || _complaintIdController.text.trim().isNotEmpty)
+                        TextButton(
+                          onPressed: _loading
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _complaintIdController.clear();
+                                    _searchId = '';
+                                    _complaint = null;
+                                    _error = null;
+                                  });
+                                },
+                          child: const Text('Clear'),
+                        ),
                     ],
                   ),
                 ],
               ),
             ),
           ),
-          if (_searchId.isNotEmpty) ...[
+          if (showResults) ...[
             const SizedBox(height: 24),
             if (_loading)
               const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))

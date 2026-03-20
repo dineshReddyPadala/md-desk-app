@@ -14,6 +14,7 @@ import 'screens/track_complaint_screen.dart';
 import 'screens/message_md_screen.dart';
 import 'screens/products_screen.dart';
 import 'screens/dealer_locator_screen.dart';
+import 'screens/project_chat_screen.dart';
 
 void main() {
   runApp(
@@ -69,6 +70,7 @@ final _router = GoRouter(
           },
         ),
         GoRoute(path: '/message-md', builder: (_, __) => const MessageMDScreen()),
+        GoRoute(path: '/chat', builder: (_, __) => const ProjectChatScreen()),
         GoRoute(path: '/products', builder: (_, __) => const ProductsScreen()),
         GoRoute(path: '/dealers', builder: (_, __) => const DealerLocatorScreen()),
       ],

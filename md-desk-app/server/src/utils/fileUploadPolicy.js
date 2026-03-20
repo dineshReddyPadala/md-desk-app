@@ -1,7 +1,8 @@
 /**
  * Upload scopes:
- * - `media` — documents, images, video, audio, zip (complaints, projects; use same for chat when added)
+ * - `media` — documents, images, video, audio, zip (complaints, projects)
  * - `image` — images only (product & dealer photos)
+ * - `chat` — PDF, images, and short voice (MP3/WAV/OGG/WebM audio) for messaging
  */
 
 const IMAGE_MIMES = new Set([
@@ -47,6 +48,19 @@ const FULL_MEDIA_MIMES = new Set([
   'application/zip',
   'application/x-zip-compressed',
   'multipart/x-zip',
+]);
+
+const CHAT_MIMES = new Set([
+  'application/pdf',
+  ...IMAGE_MIMES,
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/wav',
+  'audio/wave',
+  'audio/x-wav',
+  'audio/aac',
+  'audio/ogg',
+  'audio/webm',
 ]);
 
 /** Lowercase extension (no dot) → canonical MIME for storage */
@@ -122,6 +136,9 @@ const MSG_FULL_MEDIA =
   'Invalid file type. Allowed: Documents — PDF, Word (.doc, .docx), Excel (.xls, .xlsx), PowerPoint (.ppt, .pptx), TXT, CSV; ' +
   'Images — JPEG, PNG, GIF, WebP, SVG; Videos — MP4, AVI, MOV, MKV, WebM; Audio — MP3, WAV, AAC, OGG; ZIP archives.';
 
+const MSG_CHAT =
+  'Invalid file type for chat. Allowed: PDF; images (JPEG, PNG, GIF, WebP, SVG); voice (MP3, WAV, AAC, OGG, WebM audio).';
+
 function getExtensionFromFilename(filename) {
   if (!filename || typeof filename !== 'string') return '';
   const i = filename.lastIndexOf('.');
@@ -133,17 +150,18 @@ function mimeAllowedForScope(mimetype, scope) {
   if (!m) return false;
   if (m === 'image/jpg') m = 'image/jpeg';
   if (scope === 'image') return IMAGE_MIMES.has(m);
+  if (scope === 'chat') return CHAT_MIMES.has(m);
   return FULL_MEDIA_MIMES.has(m);
 }
 
 /**
  * @param {string} mimetype
  * @param {string} [filename]
- * @param {'media'|'image'} scope
+ * @param {'media'|'image'|'chat'} scope
  * @returns {{ ok: true, contentType: string } | { ok: false, message: string }}
  */
 function validateUpload(mimetype, filename, scope) {
-  const allowSet = scope === 'image' ? IMAGE_MIMES : FULL_MEDIA_MIMES;
+  const allowSet = scope === 'image' ? IMAGE_MIMES : scope === 'chat' ? CHAT_MIMES : FULL_MEDIA_MIMES;
   let normalized = (mimetype || '').trim().toLowerCase();
   if (normalized === 'image/jpg') normalized = 'image/jpeg';
 
@@ -154,7 +172,8 @@ function validateUpload(mimetype, filename, scope) {
   const ext = getExtensionFromFilename(filename);
   const fromExt = ext ? EXT_TO_MIME[ext] : null;
   if (fromExt) {
-    const allowed = scope === 'image' ? IMAGE_MIMES.has(fromExt) : FULL_MEDIA_MIMES.has(fromExt);
+    const allowed =
+      scope === 'image' ? IMAGE_MIMES.has(fromExt) : scope === 'chat' ? CHAT_MIMES.has(fromExt) : FULL_MEDIA_MIMES.has(fromExt);
     if (allowed) {
       return { ok: true, contentType: fromExt };
     }
@@ -162,7 +181,7 @@ function validateUpload(mimetype, filename, scope) {
 
   return {
     ok: false,
-    message: scope === 'image' ? MSG_IMAGE_ONLY : MSG_FULL_MEDIA,
+    message: scope === 'image' ? MSG_IMAGE_ONLY : scope === 'chat' ? MSG_CHAT : MSG_FULL_MEDIA,
   };
 }
 
@@ -172,7 +191,7 @@ function getExtensionForMime(contentType) {
   return MIME_TO_EXT[m] || 'bin';
 }
 
-const SCOPES = ['media', 'image'];
+const SCOPES = ['media', 'image', 'chat'];
 
 function normalizeScope(raw) {
   const s = String(raw || 'media').toLowerCase();
@@ -187,6 +206,8 @@ module.exports = {
   normalizeScope,
   IMAGE_MIMES,
   FULL_MEDIA_MIMES,
+  CHAT_MIMES,
   MSG_IMAGE_ONLY,
   MSG_FULL_MEDIA,
+  MSG_CHAT,
 };

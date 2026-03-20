@@ -12,6 +12,7 @@ import TrackComplaintPage from './pages/TrackComplaintPage';
 import MessageMDPage from './pages/MessageMDPage';
 import ProductsPage from './pages/ProductsPage';
 import DealerLocatorPage from './pages/DealerLocatorPage';
+import ProjectChatPage from './pages/ProjectChatPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { token, isLoading } = useAuth();
@@ -41,6 +42,7 @@ export default function App() {
         <Route path="raise-complaint" element={<RaiseComplaintPage />} />
         <Route path="track" element={<TrackComplaintPage />} />
         <Route path="message-md" element={<MessageMDPage />} />
+        <Route path="chat" element={<ProjectChatPage />} />
         <Route path="products" element={<ProductsPage />} />
         <Route path="dealers" element={<DealerLocatorPage />} />
       </Route>

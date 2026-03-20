@@ -13,7 +13,7 @@ const s3 = new AWS.S3({
  * @param {Buffer} buffer
  * @param {string} mimetype - reported MIME (may be wrong)
  * @param {string} folder - S3 folder prefix
- * @param {{ filename?: string, scope?: 'media'|'image' }} [options]
+ * @param {{ filename?: string, scope?: 'media'|'image'|'chat' }} [options]
  */
 async function uploadToS3(buffer, mimetype, folder = 'uploads', options = {}) {
   const { filename, scope = 'media' } = options;

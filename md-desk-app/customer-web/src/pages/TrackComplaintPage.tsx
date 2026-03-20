@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box,
   TextField,
@@ -14,15 +14,20 @@ import {
   Chip,
   Skeleton,
   InputAdornment,
+  IconButton,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { complaintsApi } from '../api/endpoints';
+import { getBackendErrorMessage } from '../api/getBackendErrorMessage';
 
 const statusSteps = ['RECEIVED', 'UNDER_REVIEW', 'IN_PROGRESS', 'RESOLVED'];
 const stepColors = ['#0097d7', '#f37336', '#ffb74d', '#2e7d32'];
 
 export default function TrackComplaintPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const idFromUrl = searchParams.get('complaintId') ?? '';
   const [complaintId, setComplaintId] = useState(idFromUrl);
   const [searchId, setSearchId] = useState(idFromUrl);
@@ -31,13 +36,27 @@ export default function TrackComplaintPage() {
     if (idFromUrl) {
       setComplaintId(idFromUrl);
       setSearchId(idFromUrl);
+    } else {
+      setComplaintId('');
+      setSearchId('');
+      queryClient.removeQueries({ queryKey: ['track-complaint'] });
     }
-  }, [idFromUrl]);
+  }, [idFromUrl, queryClient]);
 
-  const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['track-complaint', searchId],
-    queryFn: async () => (await complaintsApi.trackByComplaintId(searchId)).data,
-    enabled: !!searchId,
+  useEffect(() => {
+    return () => {
+      queryClient.removeQueries({ queryKey: ['track-complaint'] });
+    };
+  }, [queryClient]);
+
+  const trimmedInput = complaintId.trim();
+  const resultsMatchInput = trimmedInput === searchId;
+  const effectiveSearchId = resultsMatchInput ? searchId : '';
+
+  const { data, isLoading, isFetching, isError, error } = useQuery({
+    queryKey: ['track-complaint', effectiveSearchId],
+    queryFn: async () => (await complaintsApi.trackByComplaintId(effectiveSearchId)).data,
+    enabled: !!effectiveSearchId,
     retry: false,
   });
 
@@ -55,8 +74,32 @@ export default function TrackComplaintPage() {
   const activeStep = statusSteps.indexOf(complaint?.status || '');
   const isImage = (type: string) => /^image\//i.test(type);
 
+  const handleTrack = () => {
+    setSearchId(trimmedInput);
+  };
+
+  const handleClearSearch = () => {
+    setComplaintId('');
+    setSearchId('');
+    queryClient.removeQueries({ queryKey: ['track-complaint'] });
+  };
+
   return (
     <Box>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+        <IconButton
+          aria-label="Back"
+          onClick={() => navigate(-1)}
+          edge="start"
+          sx={{ mr: 0.5 }}
+        >
+          <ArrowBackIcon />
+        </IconButton>
+        <Button variant="text" onClick={() => navigate('/dashboard')} sx={{ textTransform: 'none' }}>
+          Dashboard
+        </Button>
+      </Box>
+
       <Typography variant="h4" fontWeight={700} gutterBottom>Track Complaint</Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
         Enter your complaint ID to see current status and timeline.
@@ -82,16 +125,21 @@ export default function TrackComplaintPage() {
           />
           <Button
             variant="contained"
-            onClick={() => setSearchId(complaintId.trim())}
-            disabled={!complaintId.trim() || isFetching}
+            onClick={handleTrack}
+            disabled={!trimmedInput || isFetching}
             sx={{ minHeight: 56 }}
           >
             {isFetching ? 'Searching…' : 'Track'}
           </Button>
+          {(searchId || trimmedInput) && (
+            <Button variant="outlined" onClick={handleClearSearch} sx={{ minHeight: 56 }}>
+              Clear
+            </Button>
+          )}
         </Box>
       </Paper>
 
-      {searchId && (
+      {effectiveSearchId && (
         <>
           {isLoading && (
             <Paper sx={{ p: 3, borderRadius: 2 }} variant="outlined">
@@ -162,7 +210,12 @@ export default function TrackComplaintPage() {
               </Stepper>
             </Paper>
           )}
-          {data === undefined && !isLoading && (
+          {isError && (
+            <Alert severity="error" sx={{ borderRadius: 2 }}>
+              {getBackendErrorMessage(error, 'Complaint not found or you do not have access.')}
+            </Alert>
+          )}
+          {!isError && data === undefined && !isLoading && (
             <Alert severity="info" sx={{ borderRadius: 2 }}>
               Enter your complaint ID and click Track. Make sure you are logged in with the account that created the complaint.
             </Alert>

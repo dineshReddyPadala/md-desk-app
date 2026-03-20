@@ -5,8 +5,8 @@ const uploadQuerystring = {
   properties: {
     scope: {
       type: 'string',
-      enum: ['media', 'image'],
-      description: 'media = documents/images/video/audio/zip (projects, complaints, chat). image = product/dealer photos only.',
+      enum: ['media', 'image', 'chat'],
+      description: 'media = documents/images/video/audio/zip (projects, complaints). image = product/dealer photos. chat = PDF, images, voice.',
     },
   },
 };
