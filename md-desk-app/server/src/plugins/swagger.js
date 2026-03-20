@@ -39,7 +39,7 @@ async function swaggerPlugin(fastify, opts) {
               id: { type: 'string' },
               name: { type: 'string' },
               email: { type: 'string' },
-              role: { type: 'string', enum: ['ADMIN', 'CUSTOMER'] },
+              role: { type: 'string', enum: ['ADMIN', 'EMPLOYEE', 'CUSTOMER'] },
               phone: { type: 'string' },
               city: { type: 'string' },
               createdAt: { type: 'string', format: 'date-time' },

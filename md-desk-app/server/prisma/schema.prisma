@@ -16,6 +16,7 @@ model User {
   role                  Role      @default(CUSTOMER)
   city                  String?
   company               String?
+  designation           String?
   passwordResetToken    String?    @map("password_reset_token")
   passwordResetExpires  DateTime?  @map("password_reset_expires")
   createdAt             DateTime  @default(now()) @map("created_at")
@@ -47,6 +48,7 @@ model Notification {
 
 enum Role {
   ADMIN
+  EMPLOYEE
   CUSTOMER
 }
 
@@ -183,3 +185,4 @@ model AdminResponse {
   @@index([complaintId])
   @@map("admin_responses")
 }
+

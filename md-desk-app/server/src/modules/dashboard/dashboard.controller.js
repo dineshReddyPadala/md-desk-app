@@ -34,14 +34,14 @@ async function regionStats(req, reply) {
   return reply.send({ success: true, stats: data });
 }
 
-async function productStats(req, reply) {
+async function projectComplaintStats(req, reply) {
   const cache = req.server.cache;
-  const key = getCacheKey('product');
+  const key = getCacheKey('project-complaints');
   if (cache) {
     const cached = await cache.get(key);
     if (cached) return reply.send(JSON.parse(cached));
   }
-  const data = await dashboardService.getProductStats(req.server.prisma);
+  const data = await dashboardService.getProjectComplaintStats(req.server.prisma);
   if (cache) {
     const ttl = req.server.config?.cache?.ttl ?? 60;
     await cache.setex(key, ttl, JSON.stringify({ success: true, stats: data }));
@@ -80,4 +80,9 @@ async function creationStats(req, reply) {
   return reply.send({ success: true, stats: data });
 }
 
-module.exports = { summary, regionStats, productStats, statusStats, creationStats };
+async function customerSummary(req, reply) {
+  const data = await dashboardService.getCustomerSummary(req.server.prisma, req.user.id);
+  return reply.send({ success: true, ...data });
+}
+
+module.exports = { summary, regionStats, projectComplaintStats, statusStats, creationStats, customerSummary };

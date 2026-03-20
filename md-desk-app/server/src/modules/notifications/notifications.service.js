@@ -13,8 +13,11 @@ async function create(prisma, { userId, type, title, body }) {
 }
 
 async function notifyAdmins(prisma, { type, title, body }) {
-  const admins = await prisma.user.findMany({ where: { role: 'ADMIN' }, select: { id: true } });
-  await Promise.all(admins.map((a) => create(prisma, { userId: a.id, type, title, body })));
+  const staff = await prisma.user.findMany({
+    where: { role: { in: ['ADMIN', 'EMPLOYEE'] } },
+    select: { id: true },
+  });
+  await Promise.all(staff.map((a) => create(prisma, { userId: a.id, type, title, body })));
 }
 
 async function listForUser(prisma, userId, { limit = 20 } = {}) {

@@ -27,8 +27,10 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DownloadIcon from '@mui/icons-material/Download';
 import { dealersApi, uploadApi, type DealerDto } from '../api/endpoints';
 import { getBackendErrorMessage } from '../api/getBackendErrorMessage';
+import { useStaffRole } from '../hooks/useStaffRole';
 
 export default function DealersPage() {
+  const { canMutate } = useStaffRole();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<DealerDto | null>(null);
   const [name, setName] = useState('');
@@ -153,19 +155,21 @@ export default function DealersPage() {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 3 }}>
         <Typography variant="h4" fontWeight={700}>Dealers</Typography>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownloadTemplate}>Download template</Button>
-          <Button component="label" variant="outlined" startIcon={<UploadFileIcon />}>
-            Bulk upload (Excel)
-            <input type="file" accept=".xlsx,.xls" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) { setBulkError(null); setBulkFile(f); } }} />
-          </Button>
-          {bulkFile && (
-            <Button variant="contained" onClick={() => bulkUploadMutation.mutate(bulkFile)} disabled={bulkUploadMutation.isPending}>
-              Upload {bulkFile.name}
+        {canMutate && (
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownloadTemplate}>Download template</Button>
+            <Button component="label" variant="outlined" startIcon={<UploadFileIcon />}>
+              Bulk upload (Excel)
+              <input type="file" accept=".xlsx,.xls" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) { setBulkError(null); setBulkFile(f); } }} />
             </Button>
-          )}
-          <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenAdd}>Add Dealer</Button>
-        </Box>
+            {bulkFile && (
+              <Button variant="contained" onClick={() => bulkUploadMutation.mutate(bulkFile)} disabled={bulkUploadMutation.isPending}>
+                Upload {bulkFile.name}
+              </Button>
+            )}
+            <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenAdd}>Add Dealer</Button>
+          </Box>
+        )}
       </Box>
       {bulkError && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setBulkError(null)}>{bulkError}</Alert>}
       <TableContainer component={Paper}>
@@ -176,13 +180,13 @@ export default function DealersPage() {
               <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>City</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Phone</TableCell>
-              <TableCell sx={{ fontWeight: 600 }} align="right">Actions</TableCell>
+              {canMutate && <TableCell sx={{ fontWeight: 600 }} align="right">Actions</TableCell>}
             </TableRow>
           </TableHead>
           <TableBody>
             {isLoading
               ? Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={i}><TableCell colSpan={5}><Skeleton height={56} /></TableCell></TableRow>
+                  <TableRow key={i}><TableCell colSpan={canMutate ? 5 : 4}><Skeleton height={56} /></TableCell></TableRow>
                 ))
               : dealers.map((d) => (
                   <TableRow key={d.id} hover>
@@ -198,17 +202,19 @@ export default function DealersPage() {
                     <TableCell>{d.name}</TableCell>
                     <TableCell>{d.city || '—'}</TableCell>
                     <TableCell>{d.phone || '—'}</TableCell>
-                    <TableCell align="right">
-                      <IconButton size="small" onClick={() => handleOpenEdit(d)}><EditIcon /></IconButton>
-                      <IconButton size="small" color="error" onClick={() => window.confirm('Delete this dealer?') && deleteMutation.mutate(d.id)}><DeleteIcon /></IconButton>
-                    </TableCell>
+                    {canMutate && (
+                      <TableCell align="right">
+                        <IconButton size="small" onClick={() => handleOpenEdit(d)}><EditIcon /></IconButton>
+                        <IconButton size="small" color="error" onClick={() => window.confirm('Delete this dealer?') && deleteMutation.mutate(d.id)}><DeleteIcon /></IconButton>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
           </TableBody>
         </Table>
       </TableContainer>
 
-      <Dialog open={open} onClose={resetAndClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
+      <Dialog open={canMutate && open} onClose={resetAndClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
         <DialogTitle>{editing ? 'Edit Dealer' : 'Add Dealer'}</DialogTitle>
         <DialogContent>
           <form

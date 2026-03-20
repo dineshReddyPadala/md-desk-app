@@ -21,6 +21,7 @@ import {
   Select,
   MenuItem,
   TablePagination,
+  Chip,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -30,6 +31,7 @@ import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DownloadIcon from '@mui/icons-material/Download';
 import { projectsApi, clientsApi, uploadApi, type ProjectDto, type ClientDto } from '../api/endpoints';
 import { getBackendErrorMessage } from '../api/getBackendErrorMessage';
+import { useStaffRole } from '../hooks/useStaffRole';
 
 const STATUS_OPTIONS: { value: ProjectDto['status']; label: string }[] = [
   { value: 'PENDING', label: 'Pending' },
@@ -38,6 +40,7 @@ const STATUS_OPTIONS: { value: ProjectDto['status']; label: string }[] = [
 ];
 
 export default function ProjectsPage() {
+  const { canMutate } = useStaffRole();
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -60,6 +63,7 @@ export default function ProjectsPage() {
   const { data: clientsData } = useQuery({
     queryKey: ['clients', 1, 500],
     queryFn: async () => (await clientsApi.list({ page: 1, limit: 500 })).data,
+    enabled: canMutate,
   });
   const projects = (projectsData?.projects || []) as ProjectDto[];
   const clients = (clientsData?.clients || []) as ClientDto[];
@@ -152,25 +156,27 @@ export default function ProjectsPage() {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 3 }}>
         <Typography variant="h4" fontWeight={700}>Project Management</Typography>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownloadTemplate}>Download template</Button>
-          <Button component="label" variant="outlined" startIcon={<UploadFileIcon />}>
-            Excel upload
-            <input type="file" accept=".xlsx,.xls" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) { setBulkError(null); setBulkFile(f); } }} />
-          </Button>
-          {bulkFile && (
-            <Button variant="contained" onClick={() => bulkUploadMutation.mutate(bulkFile)} disabled={bulkUploadMutation.isPending}>
-              Upload {bulkFile.name}
+        {canMutate && (
+          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownloadTemplate}>Download template</Button>
+            <Button component="label" variant="outlined" startIcon={<UploadFileIcon />}>
+              Excel upload
+              <input type="file" accept=".xlsx,.xls" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) { setBulkError(null); setBulkFile(f); } }} />
             </Button>
-          )}
-          <Button variant="contained" startIcon={showForm ? <ExpandLessIcon /> : <AddIcon />} onClick={() => setShowForm((v) => !v)}>
-            {showForm ? 'Hide form' : 'Create project'}
-          </Button>
-        </Box>
+            {bulkFile && (
+              <Button variant="contained" onClick={() => bulkUploadMutation.mutate(bulkFile)} disabled={bulkUploadMutation.isPending}>
+                Upload {bulkFile.name}
+              </Button>
+            )}
+            <Button variant="contained" startIcon={showForm ? <ExpandLessIcon /> : <AddIcon />} onClick={() => setShowForm((v) => !v)}>
+              {showForm ? 'Hide form' : 'Create project'}
+            </Button>
+          </Box>
+        )}
       </Box>
       {bulkError && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setBulkError(null)}>{bulkError}</Alert>}
 
-      <Collapse in={showForm}>
+      <Collapse in={canMutate && showForm}>
         <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
           <Typography variant="subtitle1" fontWeight={600} gutterBottom>Create project (form below)</Typography>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -242,17 +248,21 @@ export default function ProjectsPage() {
                     <TableCell>{formatDate(p.startDate)} / {formatDate(p.endDate)}</TableCell>
                     <TableCell>{p.client?.name || '—'}</TableCell>
                     <TableCell>
-                      <Select
-                        size="small"
-                        value={p.status}
-                        onChange={(e) => updateStatusMutation.mutate({ id: p.id, status: e.target.value as ProjectDto['status'] })}
-                        sx={{ minWidth: 140 }}
-                        disabled={updateStatusMutation.isPending}
-                      >
-                        {STATUS_OPTIONS.map((o) => (
-                          <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
-                        ))}
-                      </Select>
+                      {canMutate ? (
+                        <Select
+                          size="small"
+                          value={p.status}
+                          onChange={(e) => updateStatusMutation.mutate({ id: p.id, status: e.target.value as ProjectDto['status'] })}
+                          sx={{ minWidth: 140 }}
+                          disabled={updateStatusMutation.isPending}
+                        >
+                          {STATUS_OPTIONS.map((o) => (
+                            <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+                          ))}
+                        </Select>
+                      ) : (
+                        <Chip label={p.status.replace('_', ' ')} size="small" />
+                      )}
                     </TableCell>
                     <TableCell>
                       {p.documentUrl ? (
@@ -260,7 +270,9 @@ export default function ProjectsPage() {
                       ) : '—'}
                     </TableCell>
                     <TableCell align="right">
-                      <IconButton size="small" color="error" onClick={() => window.confirm('Delete this project?') && deleteMutation.mutate(p.id)}><DeleteIcon /></IconButton>
+                      {canMutate && (
+                        <IconButton size="small" color="error" onClick={() => window.confirm('Delete this project?') && deleteMutation.mutate(p.id)}><DeleteIcon /></IconButton>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

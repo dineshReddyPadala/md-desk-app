@@ -25,6 +25,7 @@ import InventoryIcon from '@mui/icons-material/Inventory';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import FolderIcon from '@mui/icons-material/Folder';
 import PeopleIcon from '@mui/icons-material/People';
+import BadgeIcon from '@mui/icons-material/Badge';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PersonIcon from '@mui/icons-material/Person';
 import NotificationsIcon from '@mui/icons-material/Notifications';
@@ -33,15 +34,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationsApi } from '../api/endpoints';
 import { useSocket } from '../socket/useSocket';
 
-const nav = [
+const allNavItems = [
   { to: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
   { to: '/complaints', label: 'Complaints', icon: <ReportProblemIcon /> },
-  { to: '/messages', label: 'Messages', icon: <MessageIcon /> },
-  { to: '/reports', label: 'Reports', icon: <BarChartIcon /> },
+  { to: '/messages', label: 'Messages', icon: <MessageIcon />, adminOnly: true },
+  { to: '/reports', label: 'Reports', icon: <BarChartIcon />, adminOnly: true },
   { to: '/projects', label: 'Project Management', icon: <FolderIcon /> },
   { to: '/products', label: 'Products', icon: <InventoryIcon /> },
   { to: '/dealers', label: 'Dealers', icon: <StorefrontIcon /> },
-  { to: '/clients', label: 'Client Management', icon: <PeopleIcon /> },
+  { to: '/clients', label: 'Client Management', icon: <PeopleIcon />, adminOnly: true },
+  { to: '/employees', label: 'Employee Management', icon: <BadgeIcon />, adminOnly: true },
 ];
 
 export default function Layout() {
@@ -50,6 +52,8 @@ export default function Layout() {
   const [notifAnchor, setNotifAnchor] = useState<null | HTMLElement>(null);
   const navigate = useNavigate();
   const { user, logout, token } = useAuth();
+  const role = (user as { role?: string } | null)?.role;
+  const nav = allNavItems.filter((item) => !item.adminOnly || role === 'ADMIN');
   const queryClient = useQueryClient();
 
   useSocket(token);
@@ -96,7 +100,7 @@ export default function Layout() {
             <MenuIcon />
           </IconButton>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            MD Desk Admin
+            {role === 'EMPLOYEE' ? 'MD Desk (Staff)' : 'MD Desk Admin'}
           </Typography>
           <IconButton color="inherit" onClick={(e) => setNotifAnchor(e.currentTarget)}>
             <Badge badgeContent={unreadCount} color="error">

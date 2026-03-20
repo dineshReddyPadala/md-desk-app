@@ -125,7 +125,6 @@ export default function ComplaintsPage() {
               <TableCell sx={{ fontWeight: 600 }}>Complaint ID</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Customer</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Category</TableCell>
-              <TableCell sx={{ fontWeight: 600 }}>Product</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Priority</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Created</TableCell>
@@ -135,14 +134,13 @@ export default function ComplaintsPage() {
           <TableBody>
             {isLoading
               ? Array.from({ length: 5 }).map((_, i) => (
-                  <TableRow key={i}><TableCell colSpan={8}><Skeleton height={48} /></TableCell></TableRow>
+                  <TableRow key={i}><TableCell colSpan={7}><Skeleton height={48} /></TableCell></TableRow>
                 ))
               : filteredItems.map((row) => (
                   <TableRow key={row.id} hover>
                     <TableCell sx={{ fontFamily: 'monospace' }}>{row.complaintId}</TableCell>
                     <TableCell>{row.user?.name || '—'}<Typography variant="caption" display="block" color="text.secondary">{row.user?.email}</Typography></TableCell>
                     <TableCell>{row.category || '—'}</TableCell>
-                    <TableCell>{row.productUsed}</TableCell>
                     <TableCell><Chip label={row.priority} color={priorityColors[row.priority] || 'default'} size="small" /></TableCell>
                     <TableCell><Chip label={row.status.replace('_', ' ')} color={statusColors[row.status] || 'default'} size="small" /></TableCell>
                     <TableCell>{new Date(row.createdAt).toLocaleDateString()}</TableCell>

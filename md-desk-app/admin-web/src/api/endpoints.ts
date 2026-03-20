@@ -21,9 +21,13 @@ export const dashboardApi = {
       received: number;
       underReview: number;
       inProgress: number;
+      totalClients?: number;
+      ongoingProjects?: number;
+      activitySummary?: { complaintsLast7Days: number; projectsUpdatedLast7Days: number };
     }>('/admin/dashboard/summary'),
   regionStats: () => api.get<{ success: boolean; stats: { city: string; count: number }[] }>('/admin/dashboard/region-stats'),
-  productStats: () => api.get<{ success: boolean; stats: { product: string; count: number }[] }>('/admin/dashboard/product-stats'),
+  projectComplaintStats: () =>
+    api.get<{ success: boolean; stats: { project: string; projectId: string; count: number }[] }>('/admin/dashboard/project-complaint-stats'),
   statusStats: () =>
     api.get<{ success: boolean; stats: { status: string; label: string; count: number }[] }>('/admin/dashboard/status-stats'),
   creationStats: (params?: { days?: number }) =>
@@ -141,6 +145,19 @@ export const uploadApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+};
+
+export type EmployeeDto = { id: string; name: string; email: string; mobile: string; designation?: string | null; createdAt: string; updatedAt: string };
+
+export const employeesApi = {
+  list: (params?: { page?: number; limit?: number; search?: string }) =>
+    api.get<{ success: boolean; items: EmployeeDto[]; total: number; page: number; totalPages: number }>('/admin/employees', { params }),
+  getById: (id: string) => api.get<{ success: boolean; employee: EmployeeDto }>(`/admin/employees/${id}`),
+  create: (data: { name: string; email: string; mobile: string; designation?: string }) =>
+    api.post<{ success: boolean; employee: EmployeeDto }>('/admin/employees', data),
+  update: (id: string, data: Partial<{ name: string; email: string; mobile: string; designation: string }>) =>
+    api.put<{ success: boolean; employee: EmployeeDto }>(`/admin/employees/${id}`, data),
+  delete: (id: string) => api.delete<{ success: boolean }>(`/admin/employees/${id}`),
 };
 
 export const notificationsApi = {

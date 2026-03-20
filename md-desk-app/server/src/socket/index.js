@@ -46,7 +46,7 @@ function attachSocket(fastify) {
     const userId = socket.userId;
     const room = `user:${userId}`;
     socket.join(room);
-    if (socket.role === 'ADMIN') {
+    if (socket.role === 'ADMIN' || socket.role === 'EMPLOYEE') {
       socket.join('admin');
     }
     fastify.log.info({ userId, role: socket.role }, 'Socket connected');

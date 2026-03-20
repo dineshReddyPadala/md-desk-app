@@ -24,7 +24,6 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
   List<XFile> _pickedFiles = [];
   String? _error;
   bool _submitting = false;
-  String? _successComplaintId;
 
   @override
   void dispose() {
@@ -76,12 +75,9 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
           files.add(http.MultipartFile.fromBytes('photos', bytes, filename: name.isNotEmpty ? name : 'image.jpg'));
         }
       }
-      final res = await client.postMultipart('/complaints', fields: fields, files: files);
-      final complaintId = res['complaint_id'] as String?;
-      if (mounted) setState(() {
-        _submitting = false;
-        _successComplaintId = complaintId;
-      });
+      await client.postMultipart('/complaints', fields: fields, files: files);
+      if (mounted) context.go('/complaints');
+      return;
     } catch (e) {
       if (mounted) setState(() {
         _error = e.toString().replaceFirst('Exception: ', '');
@@ -93,35 +89,6 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-
-    if (_successComplaintId != null) {
-      return Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Card(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.check_circle, size: 64, color: theme.colorScheme.primary),
-                  const SizedBox(height: 16),
-                  Text('Complaint submitted', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Text('Your complaint ID: $_successComplaintId'),
-                  Text('Use this ID to track your complaint.', style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline)),
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: () => context.go('/track'),
-                    child: const Text('Track Complaint'),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),

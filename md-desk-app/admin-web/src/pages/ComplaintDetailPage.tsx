@@ -17,8 +17,10 @@ import {
   Alert,
 } from '@mui/material';
 import { complaintsApi } from '../api/endpoints';
+import { useStaffRole } from '../hooks/useStaffRole';
 
 export default function ComplaintDetailPage() {
+  const { canUpdateComplaint } = useStaffRole();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -95,38 +97,40 @@ export default function ComplaintDetailPage() {
           </Grid>
         </Grid>
       </Paper>
-      <Paper sx={{ p: 3, mb: 2 }}>
-        <Typography variant="h6" gutterBottom>
-          Update Status & Priority
-        </Typography>
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
-          <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel>Status</InputLabel>
-            <Select value={status || complaint.status} label="Status" onChange={(e) => setStatus(e.target.value)}>
-              <MenuItem value="RECEIVED">Received</MenuItem>
-              <MenuItem value="UNDER_REVIEW">Under Review</MenuItem>
-              <MenuItem value="IN_PROGRESS">In Progress</MenuItem>
-              <MenuItem value="RESOLVED">Resolved</MenuItem>
-            </Select>
-          </FormControl>
-          <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel>Priority</InputLabel>
-            <Select value={priority || complaint.priority} label="Priority" onChange={(e) => setPriority(e.target.value)}>
-              <MenuItem value="HIGH">High</MenuItem>
-              <MenuItem value="MEDIUM">Medium</MenuItem>
-              <MenuItem value="LOW">Low</MenuItem>
-            </Select>
-          </FormControl>
-          <Button
-            variant="contained"
-            disabled={updateStatus.isPending || ((status || complaint.status) === complaint.status && (priority || complaint.priority) === complaint.priority)}
-            onClick={() => updateStatus.mutate({ status: status || complaint.status, priority: priority || complaint.priority })}
-          >
-            Update
-          </Button>
-        </Box>
-        {updateStatus.isSuccess && <Alert severity="success" sx={{ mt: 2 }}>Status and priority updated.</Alert>}
-      </Paper>
+      {canUpdateComplaint && (
+        <Paper sx={{ p: 3, mb: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            Update Status & Priority
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel>Status</InputLabel>
+              <Select value={status || complaint.status} label="Status" onChange={(e) => setStatus(e.target.value)}>
+                <MenuItem value="RECEIVED">Received</MenuItem>
+                <MenuItem value="UNDER_REVIEW">Under Review</MenuItem>
+                <MenuItem value="IN_PROGRESS">In Progress</MenuItem>
+                <MenuItem value="RESOLVED">Resolved</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel>Priority</InputLabel>
+              <Select value={priority || complaint.priority} label="Priority" onChange={(e) => setPriority(e.target.value)}>
+                <MenuItem value="HIGH">High</MenuItem>
+                <MenuItem value="MEDIUM">Medium</MenuItem>
+                <MenuItem value="LOW">Low</MenuItem>
+              </Select>
+            </FormControl>
+            <Button
+              variant="contained"
+              disabled={updateStatus.isPending || ((status || complaint.status) === complaint.status && (priority || complaint.priority) === complaint.priority)}
+              onClick={() => updateStatus.mutate({ status: status || complaint.status, priority: priority || complaint.priority })}
+            >
+              Update
+            </Button>
+          </Box>
+          {updateStatus.isSuccess && <Alert severity="success" sx={{ mt: 2 }}>Status and priority updated.</Alert>}
+        </Paper>
+      )}
       {complaint.media && complaint.media.length > 0 && (
         <Paper sx={{ p: 3 }}>
           <Typography variant="h6" gutterBottom>

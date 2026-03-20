@@ -157,6 +157,7 @@ async function loginUser(prisma, { email, phone }, password) {
     phone: user.phone,
     city: user.city,
     company: user.company,
+    designation: user.designation,
     createdAt: user.createdAt,
   };
   return { user: safe, token };
@@ -165,7 +166,7 @@ async function loginUser(prisma, { email, phone }, password) {
 async function getMe(prisma, userId) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, name: true, email: true, role: true, phone: true, city: true, company: true, createdAt: true },
+    select: { id: true, name: true, email: true, role: true, phone: true, city: true, company: true, designation: true, createdAt: true },
   });
   if (!user) {
     const err = new Error('User not found');

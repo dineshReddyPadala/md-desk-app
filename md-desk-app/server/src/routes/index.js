@@ -3,11 +3,13 @@ const complaintsRoutes = require('../modules/complaints/complaints.routes');
 const uploadRoutes = require('../modules/upload/upload.routes');
 const messagesRoutes = require('../modules/messages/messages.routes');
 const dashboardRoutes = require('../modules/dashboard/dashboard.routes');
+const dashboardController = require('../modules/dashboard/dashboard.controller');
 const productsRoutes = require('../modules/products/products.routes');
 const dealersRoutes = require('../modules/dealers/dealers.routes');
 const notificationsRoutes = require('../modules/notifications/notifications.routes');
 const clientsAdminRoutes = require('../modules/clients/clients.routes');
 const projectsAdminRoutes = require('../modules/projects/projects.routes');
+const employeesRoutes = require('../modules/employees/employees.routes');
 
 const complaintsController = require('../modules/complaints/complaints.controller');
 const productsController = require('../modules/products/products.controller');
@@ -17,26 +19,33 @@ const { createProductSchema, updateProductSchema, productIdParam } = require('..
 const { createDealerSchema, updateDealerSchema, dealerIdParam } = require('../modules/dealers/dealers.validation');
 const { composePreHandlers } = require('../utils/preHandler');
 
+const ADMIN_OR_EMPLOYEE = ['ADMIN', 'EMPLOYEE'];
+
 async function registerRoutes(fastify) {
   fastify.register(authRoutes, { prefix: '/auth' });
   fastify.register(complaintsRoutes, { prefix: '/complaints' });
 
   fastify.register(async (instance) => {
-    const admin = composePreHandlers(instance.authenticateJWT, instance.authorizeRole('ADMIN'));
+    const staff = composePreHandlers(instance.authenticateJWT, instance.authorizeRole(ADMIN_OR_EMPLOYEE));
     const adminComplaintSchema = { tags: ['complaints'], security: [{ bearerAuth: [] }] };
-    instance.get('/', { preHandler: admin, schema: { ...adminComplaintSchema, summary: 'List all complaints (admin)', querystring: queryListSchema.querystring } }, complaintsController.adminList);
-    instance.get('/high-priority', { preHandler: admin, schema: { ...adminComplaintSchema, summary: 'High priority complaints (admin)', querystring: queryListSchema.querystring } }, complaintsController.highPriority);
-    instance.put('/:id/status', { preHandler: admin, schema: { ...adminComplaintSchema, summary: 'Update complaint status (admin)', params: updateStatusSchema.params, body: updateStatusSchema.body } }, complaintsController.updateStatus);
+    instance.get('/', { preHandler: staff, schema: { ...adminComplaintSchema, summary: 'List all complaints (admin/employee)', querystring: queryListSchema.querystring } }, complaintsController.adminList);
+    instance.get('/high-priority', { preHandler: staff, schema: { ...adminComplaintSchema, summary: 'High priority complaints (admin/employee)', querystring: queryListSchema.querystring } }, complaintsController.highPriority);
+    instance.put('/:id/status', { preHandler: staff, schema: { ...adminComplaintSchema, summary: 'Update complaint status & priority (admin/employee)', params: updateStatusSchema.params, body: updateStatusSchema.body } }, complaintsController.updateStatus);
   }, { prefix: '/admin/complaints' });
 
   fastify.register(uploadRoutes, { prefix: '/upload' });
   fastify.register(messagesRoutes, { prefix: '/messages' });
   fastify.register(dashboardRoutes, { prefix: '/admin/dashboard' });
+  fastify.get('/dashboard/customer-summary', {
+    preHandler: fastify.authenticateJWT,
+    schema: { tags: ['dashboard'], security: [{ bearerAuth: [] }], summary: 'Customer dashboard summary' },
+  }, dashboardController.customerSummary);
   fastify.register(productsRoutes, { prefix: '/products' });
   fastify.register(dealersRoutes, { prefix: '/dealers' });
   fastify.register(notificationsRoutes, { prefix: '/notifications' });
   fastify.register(clientsAdminRoutes, { prefix: '/admin/clients' });
   fastify.register(projectsAdminRoutes, { prefix: '/admin/projects' });
+  fastify.register(employeesRoutes, { prefix: '/admin/employees' });
 
   fastify.register(async (instance) => {
     const admin = composePreHandlers(instance.authenticateJWT, instance.authorizeRole('ADMIN'));

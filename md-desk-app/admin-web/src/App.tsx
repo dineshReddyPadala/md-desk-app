@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import Layout from './layouts/Layout';
 import LoginPage from './pages/LoginPage';
@@ -13,12 +13,22 @@ import ProductsPage from './pages/ProductsPage';
 import DealersPage from './pages/DealersPage';
 import ProjectsPage from './pages/ProjectsPage';
 import ClientsPage from './pages/ClientsPage';
+import EmployeesPage from './pages/EmployeesPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { token, isLoading } = useAuth();
   if (isLoading) return null;
   if (!token) return <Navigate to="/login" replace />;
   return <>{children}</>;
+}
+
+function AdminOnlyRoute() {
+  const { user, token, isLoading } = useAuth();
+  if (!token) return <Navigate to="/login" replace />;
+  if (isLoading) return null;
+  const role = (user as { role?: string } | null)?.role;
+  if (role !== 'ADMIN') return <Navigate to="/dashboard" replace />;
+  return <Outlet />;
 }
 
 export default function App() {
@@ -39,12 +49,15 @@ export default function App() {
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="complaints" element={<ComplaintsPage />} />
         <Route path="complaints/:id" element={<ComplaintDetailPage />} />
-        <Route path="messages" element={<MessagesPage />} />
-        <Route path="reports" element={<ReportsPage />} />
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="products" element={<ProductsPage />} />
         <Route path="dealers" element={<DealersPage />} />
-        <Route path="clients" element={<ClientsPage />} />
+        <Route element={<AdminOnlyRoute />}>
+          <Route path="messages" element={<MessagesPage />} />
+          <Route path="reports" element={<ReportsPage />} />
+          <Route path="clients" element={<ClientsPage />} />
+          <Route path="employees" element={<EmployeesPage />} />
+        </Route>
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

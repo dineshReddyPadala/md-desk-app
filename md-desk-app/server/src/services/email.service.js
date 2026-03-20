@@ -80,4 +80,20 @@ async function sendNewClientEmail(toEmail, userName, temporaryPassword) {
   });
 }
 
-module.exports = { sendMail, sendAcknowledgmentEmail, sendStatusUpdateEmail, sendOtpEmail, sendPasswordResetEmail, sendNewClientEmail };
+async function sendNewEmployeeEmail(toEmail, employeeName, designation, temporaryPassword) {
+  const designationLine = designation ? `\nDesignation: ${designation}` : '';
+  const loginLine = temporaryPassword
+    ? `\n\nSign in to MD Desk Admin with:\nEmail: ${toEmail}\nTemporary password: ${temporaryPassword}\n\nPlease change your password after first login (Forgot Password on the login page if needed).`
+    : '';
+  const loginHtml = temporaryPassword
+    ? `<p><strong>Sign in to MD Desk Admin</strong></p><p><strong>Email:</strong> ${toEmail}<br/><strong>Temporary password:</strong> ${temporaryPassword}</p><p>Please change your password after first login.</p>`
+    : '';
+  await sendMail({
+    to: toEmail,
+    subject: 'Your MD Desk employee account',
+    text: `Dear ${employeeName || 'Team Member'},\n\nYou have been added to the MD Desk team.${designationLine}${loginLine}\n\nBest regards,\nMD Desk - Techno Paints`,
+    html: `<p>Dear ${employeeName || 'Team Member'},</p><p>You have been added to the MD Desk team.${designation ? `<br/><strong>Designation:</strong> ${designation}` : ''}</p>${loginHtml}<p>Best regards,<br/>MD Desk - Techno Paints</p>`,
+  });
+}
+
+module.exports = { sendMail, sendAcknowledgmentEmail, sendStatusUpdateEmail, sendOtpEmail, sendPasswordResetEmail, sendNewClientEmail, sendNewEmployeeEmail };

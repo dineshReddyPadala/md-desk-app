@@ -9,13 +9,13 @@ export default function ReportsPage() {
     queryKey: ['dashboard-region'],
     queryFn: async () => (await dashboardApi.regionStats()).data,
   });
-  const { data: productData, isLoading: productLoading } = useQuery({
-    queryKey: ['dashboard-product'],
-    queryFn: async () => (await dashboardApi.productStats()).data,
+  const { data: projectComplaintData, isLoading: projectComplaintLoading } = useQuery({
+    queryKey: ['dashboard-project-complaints'],
+    queryFn: async () => (await dashboardApi.projectComplaintStats()).data,
   });
 
   const regionStats = regionData?.stats || [];
-  const productStats = productData?.stats || [];
+  const projectComplaintStats = projectComplaintData?.stats || [];
 
   return (
     <Box>
@@ -23,7 +23,7 @@ export default function ReportsPage() {
         Reports
       </Typography>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        Region-wise and product-wise complaint analytics
+        Region-wise and project-linked complaint analytics
       </Typography>
 
       <Grid container spacing={3}>
@@ -68,27 +68,27 @@ export default function ReportsPage() {
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
               <CategoryIcon color="primary" />
               <Typography variant="h6" fontWeight={600}>
-                Product-wise Issues
+                Complaints by project (client)
               </Typography>
             </Box>
-            {productLoading ? (
+            {projectComplaintLoading ? (
               <Skeleton variant="rectangular" height={320} />
             ) : (
               <TableContainer>
                 <Table size="small">
                   <TableHead>
                     <TableRow sx={{ bgcolor: 'grey.50' }}>
-                      <TableCell sx={{ fontWeight: 600 }}>Product</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 600 }}>Count</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>Project</TableCell>
+                      <TableCell align="right" sx={{ fontWeight: 600 }}>Complaints</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {productStats.length === 0 ? (
+                    {projectComplaintStats.length === 0 ? (
                       <TableRow><TableCell colSpan={2} align="center" sx={{ color: 'text.secondary' }}>No data</TableCell></TableRow>
                     ) : (
-                      productStats.map((row) => (
-                        <TableRow key={row.product} hover>
-                          <TableCell>{row.product}</TableCell>
+                      projectComplaintStats.map((row) => (
+                        <TableRow key={row.projectId} hover>
+                          <TableCell>{row.project}</TableCell>
                           <TableCell align="right">{row.count}</TableCell>
                         </TableRow>
                       ))

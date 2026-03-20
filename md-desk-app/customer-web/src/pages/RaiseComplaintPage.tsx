@@ -15,7 +15,6 @@ import {
   FormHelperText,
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { complaintsApi } from '../api/endpoints';
 
 export default function RaiseComplaintPage() {
@@ -27,8 +26,6 @@ export default function RaiseComplaintPage() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState<string>('PRODUCT');
   const [files, setFiles] = useState<File[]>([]);
-  const [successId, setSuccessId] = useState<string | null>(null);
-
   const createMutation = useMutation({
     mutationFn: async () => {
       const form = new FormData();
@@ -41,8 +38,8 @@ export default function RaiseComplaintPage() {
       files.forEach((f) => form.append('photos', f));
       return complaintsApi.create(form);
     },
-    onSuccess: (res) => {
-      setSuccessId(res.data.complaint_id);
+    onSuccess: () => {
+      navigate('/complaints');
     },
   });
 
@@ -50,22 +47,6 @@ export default function RaiseComplaintPage() {
     e.preventDefault();
     createMutation.mutate();
   };
-
-  if (successId) {
-    return (
-      <Paper sx={{ p: 4, maxWidth: 500, borderRadius: 2 }} elevation={0} variant="outlined">
-        <Box sx={{ textAlign: 'center' }}>
-          <CheckCircleIcon sx={{ fontSize: 64, color: 'success.main', mb: 2 }} />
-          <Typography variant="h5" fontWeight={700} color="success.main" gutterBottom>Complaint submitted</Typography>
-          <Typography sx={{ mt: 2 }}>Your complaint ID: <strong>{successId}</strong></Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>Use this ID to track your complaint.</Typography>
-          <Button variant="contained" size="large" sx={{ mt: 3 }} onClick={() => { setSuccessId(null); navigate('/track'); }}>
-            Track Complaint
-          </Button>
-        </Box>
-      </Paper>
-    );
-  }
 
   return (
     <Box>

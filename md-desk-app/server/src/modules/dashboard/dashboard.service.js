@@ -5,8 +5,12 @@ async function getSummary(prisma) {
   });
   const byStatus = Object.fromEntries(statusCounts.map((x) => [x.status, x._count.id]));
   const total = statusCounts.reduce((sum, x) => sum + x._count.id, 0);
-  const [highPriority] = await Promise.all([
+  const [highPriority, totalClients, ongoingProjects, recentComplaints, recentProjects] = await Promise.all([
     prisma.complaint.count({ where: { priority: 'HIGH' } }),
+    prisma.user.count({ where: { role: 'CUSTOMER' } }),
+    prisma.project.count({ where: { status: 'IN_PROGRESS' } }),
+    prisma.complaint.count({ where: { createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } } }),
+    prisma.project.count({ where: { updatedAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } } }),
   ]);
   return {
     total,
@@ -16,6 +20,12 @@ async function getSummary(prisma) {
     received: byStatus.RECEIVED || 0,
     underReview: byStatus.UNDER_REVIEW || 0,
     inProgress: byStatus.IN_PROGRESS || 0,
+    totalClients,
+    ongoingProjects,
+    activitySummary: {
+      complaintsLast7Days: recentComplaints,
+      projectsUpdatedLast7Days: recentProjects,
+    },
   };
 }
 
@@ -29,13 +39,19 @@ async function getRegionStats(prisma) {
   return list.map((x) => ({ city: x.city || 'Unknown', count: x._count.id }));
 }
 
-async function getProductStats(prisma) {
-  const list = await prisma.complaint.groupBy({
-    by: ['productUsed'],
-    _count: { id: true },
-    orderBy: { _count: { id: 'desc' } },
+/** Complaints from each project's assigned client (client–project mapping). */
+async function getProjectComplaintStats(prisma) {
+  const projects = await prisma.project.findMany({
+    where: { clientId: { not: null } },
+    select: { id: true, name: true, clientId: true },
   });
-  return list.map((x) => ({ product: x.productUsed, count: x._count.id }));
+  const rows = await Promise.all(
+    projects.map(async (p) => {
+      const count = await prisma.complaint.count({ where: { userId: p.clientId } });
+      return { project: p.name, projectId: p.id, count };
+    })
+  );
+  return rows.sort((a, b) => b.count - a.count);
 }
 
 const STATUS_ORDER = ['RECEIVED', 'UNDER_REVIEW', 'IN_PROGRESS', 'RESOLVED'];
@@ -77,4 +93,28 @@ async function getCreationStats(prisma, days = 7) {
     .map(([date, count]) => ({ date, count }));
 }
 
-module.exports = { getSummary, getRegionStats, getProductStats, getStatusStats, getCreationStats };
+async function getCustomerSummary(prisma, userId) {
+  const [activeProjects, complaintCounts] = await Promise.all([
+    prisma.project.findMany({
+      where: { clientId: userId, status: { in: ['PENDING', 'IN_PROGRESS'] } },
+      orderBy: { updatedAt: 'desc' },
+      take: 10,
+      select: { id: true, name: true, status: true, startDate: true, endDate: true, updatedAt: true },
+    }),
+    prisma.complaint.groupBy({
+      by: ['status'],
+      _count: { id: true },
+      where: { userId },
+    }),
+  ]);
+  const byStatus = Object.fromEntries(complaintCounts.map((x) => [x.status, x._count.id]));
+  const complaintStats = {
+    RECEIVED: byStatus.RECEIVED || 0,
+    UNDER_REVIEW: byStatus.UNDER_REVIEW || 0,
+    IN_PROGRESS: byStatus.IN_PROGRESS || 0,
+    RESOLVED: byStatus.RESOLVED || 0,
+  };
+  return { activeProjects, complaintStats };
+}
+
+module.exports = { getSummary, getRegionStats, getProjectComplaintStats, getStatusStats, getCreationStats, getCustomerSummary };

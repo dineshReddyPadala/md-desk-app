@@ -6,7 +6,10 @@ import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import BuildCircleIcon from '@mui/icons-material/BuildCircle';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import PeopleIcon from '@mui/icons-material/People';
+import FolderIcon from '@mui/icons-material/Folder';
 import { dashboardApi } from '../api/endpoints';
+import { useStaffRole } from '../hooks/useStaffRole';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -35,6 +38,8 @@ const chartOptions = {
 };
 
 export default function DashboardPage() {
+  const { isEmployee } = useStaffRole();
+
   const { data: summary, isLoading } = useQuery({
     queryKey: ['dashboard-summary'],
     queryFn: async () => (await dashboardApi.summary()).data,
@@ -43,9 +48,10 @@ export default function DashboardPage() {
     queryKey: ['dashboard-region'],
     queryFn: async () => (await dashboardApi.regionStats()).data,
   });
-  const { data: productData } = useQuery({
-    queryKey: ['dashboard-product'],
-    queryFn: async () => (await dashboardApi.productStats()).data,
+  const { data: projectComplaintData } = useQuery({
+    queryKey: ['dashboard-project-complaints'],
+    queryFn: async () => (await dashboardApi.projectComplaintStats()).data,
+    enabled: !isEmployee,
   });
   const { data: statusData } = useQuery({
     queryKey: ['dashboard-status'],
@@ -57,7 +63,7 @@ export default function DashboardPage() {
   });
 
   const regionStats = regionData?.stats || [];
-  const productStats = productData?.stats || [];
+  const projectComplaintStats = projectComplaintData?.stats || [];
   const statusStats = statusData?.stats || [];
   const creationStats = creationData?.stats || [];
   const regionChart = {
@@ -71,12 +77,12 @@ export default function DashboardPage() {
       },
     ],
   };
-  const productChart = {
-    labels: productStats.slice(0, 8).map((x) => x.product),
+  const projectComplaintChart = {
+    labels: projectComplaintStats.slice(0, 12).map((x) => x.project),
     datasets: [
       {
-        label: 'Complaints',
-        data: productStats.slice(0, 8).map((x) => x.count),
+        label: 'Complaints (from assigned client)',
+        data: projectComplaintStats.slice(0, 12).map((x) => x.count),
         backgroundColor: 'rgba(46, 125, 50, 0.75)',
         borderRadius: 6,
       },
@@ -124,14 +130,17 @@ export default function DashboardPage() {
     );
   }
 
-  const kpiCards = [
-    { label: 'Total', value: summary.total, icon: <AssignmentIcon />, color: '#0097d7' },
-    { label: 'Received', value: summary.received ?? 0, icon: <InboxIcon />, color: '#0097d7' },
-    { label: 'Under Review', value: summary.underReview ?? 0, icon: <PendingActionsIcon />, color: '#f37336' },
-    { label: 'In Progress', value: summary.inProgress ?? 0, icon: <BuildCircleIcon />, color: '#ffb74d' },
-    { label: 'Resolved', value: summary.resolved, icon: <CheckCircleIcon />, color: '#2e7d32' },
-    { label: 'High Priority', value: summary.highPriority, icon: <WarningAmberIcon />, color: '#c62828' },
+  const allKpiCards = [
+    { label: 'Total Complaints', value: summary.total, icon: <AssignmentIcon />, color: '#0097d7', employeeOk: true },
+    { label: 'Total Clients', value: summary.totalClients ?? 0, icon: <PeopleIcon />, color: '#5c6bc0', employeeOk: false },
+    { label: 'Ongoing Projects', value: summary.ongoingProjects ?? 0, icon: <FolderIcon />, color: '#26a69a', employeeOk: false },
+    { label: 'Received', value: summary.received ?? 0, icon: <InboxIcon />, color: '#0097d7', employeeOk: true },
+    { label: 'Under Review', value: summary.underReview ?? 0, icon: <PendingActionsIcon />, color: '#f37336', employeeOk: true },
+    { label: 'In Progress', value: summary.inProgress ?? 0, icon: <BuildCircleIcon />, color: '#ffb74d', employeeOk: true },
+    { label: 'Resolved', value: summary.resolved, icon: <CheckCircleIcon />, color: '#2e7d32', employeeOk: true },
+    { label: 'High Priority', value: summary.highPriority, icon: <WarningAmberIcon />, color: '#c62828', employeeOk: true },
   ];
+  const kpiCards = isEmployee ? allKpiCards.filter((k) => k.employeeOk) : allKpiCards;
 
   return (
     <Box>
@@ -156,7 +165,7 @@ export default function DashboardPage() {
 
       <Grid container spacing={2}>
         {kpiCards.map((kpi) => (
-          <Grid item xs={6} sm={4} md={2} key={kpi.label}>
+          <Grid item xs={6} sm={4} md={3} lg={2} key={kpi.label}>
             <Paper
               sx={{
                 p: 1.5,
@@ -184,6 +193,31 @@ export default function DashboardPage() {
             </Paper>
           </Grid>
         ))}
+
+        {summary.activitySummary && !isEmployee && (
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" fontWeight={600} gutterBottom>
+                Activity Summary (Last 7 Days)
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>Recent complaints and project updates</Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={6}>
+                  <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
+                    <Typography variant="h4" fontWeight={700} color="primary">{summary.activitySummary.complaintsLast7Days}</Typography>
+                    <Typography variant="body2" color="text.secondary">New complaints</Typography>
+                  </Paper>
+                </Grid>
+                <Grid item xs={6}>
+                  <Paper variant="outlined" sx={{ p: 2, textAlign: 'center' }}>
+                    <Typography variant="h4" fontWeight={700} color="secondary">{summary.activitySummary.projectsUpdatedLast7Days}</Typography>
+                    <Typography variant="body2" color="text.secondary">Projects updated</Typography>
+                  </Paper>
+                </Grid>
+              </Grid>
+            </Paper>
+          </Grid>
+        )}
 
         <Grid item xs={12} md={6} lg={4}>
           <Paper sx={{ p: 3, height: 340 }}>
@@ -224,16 +258,21 @@ export default function DashboardPage() {
             </Box>
           </Paper>
         </Grid>
-        <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3, height: 360 }}>
-            <Typography variant="h6" fontWeight={600} gutterBottom>
-              Complaints by Product
-            </Typography>
-            <Box sx={{ height: 280, mt: 1 }}>
-              <Bar data={productChart} options={chartOptions} />
-            </Box>
-          </Paper>
-        </Grid>
+        {!isEmployee && (
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 3, height: 360 }}>
+              <Typography variant="h6" fontWeight={600} gutterBottom>
+                Complaints by Project
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                Count of complaints from each project&apos;s assigned client
+              </Typography>
+              <Box sx={{ height: 260, mt: 1 }}>
+                <Bar data={projectComplaintChart} options={chartOptions} />
+              </Box>
+            </Paper>
+          </Grid>
+        )}
       </Grid>
     </Box>
   );

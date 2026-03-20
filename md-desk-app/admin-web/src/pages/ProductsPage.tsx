@@ -25,8 +25,10 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ImageIcon from '@mui/icons-material/Image';
 import { productsApi, uploadApi, type ProductDto } from '../api/endpoints';
 import { getBackendErrorMessage } from '../api/getBackendErrorMessage';
+import { useStaffRole } from '../hooks/useStaffRole';
 
 export default function ProductsPage() {
+  const { canMutate } = useStaffRole();
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ProductDto | null>(null);
   const [name, setName] = useState('');
@@ -117,7 +119,7 @@ export default function ProductsPage() {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" fontWeight={700}>Products</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenAdd}>Add Product</Button>
+        {canMutate && <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenAdd}>Add Product</Button>}
       </Box>
       <TableContainer component={Paper}>
         <Table>
@@ -126,13 +128,13 @@ export default function ProductsPage() {
               <TableCell sx={{ fontWeight: 600 }}>Image</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Name</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Description</TableCell>
-              <TableCell sx={{ fontWeight: 600 }} align="right">Actions</TableCell>
+              {canMutate && <TableCell sx={{ fontWeight: 600 }} align="right">Actions</TableCell>}
             </TableRow>
           </TableHead>
           <TableBody>
             {isLoading
               ? Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={i}><TableCell colSpan={4}><Skeleton height={56} /></TableCell></TableRow>
+                  <TableRow key={i}><TableCell colSpan={canMutate ? 4 : 3}><Skeleton height={56} /></TableCell></TableRow>
                 ))
               : products.map((p) => (
                   <TableRow key={p.id} hover>
@@ -147,17 +149,19 @@ export default function ProductsPage() {
                     </TableCell>
                     <TableCell>{p.name}</TableCell>
                     <TableCell>{p.description || '—'}</TableCell>
-                    <TableCell align="right">
-                      <IconButton size="small" onClick={() => handleOpenEdit(p)}><EditIcon /></IconButton>
-                      <IconButton size="small" color="error" onClick={() => window.confirm('Delete this product?') && deleteMutation.mutate(p.id)}><DeleteIcon /></IconButton>
-                    </TableCell>
+                    {canMutate && (
+                      <TableCell align="right">
+                        <IconButton size="small" onClick={() => handleOpenEdit(p)}><EditIcon /></IconButton>
+                        <IconButton size="small" color="error" onClick={() => window.confirm('Delete this product?') && deleteMutation.mutate(p.id)}><DeleteIcon /></IconButton>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
           </TableBody>
         </Table>
       </TableContainer>
 
-      <Dialog open={open} onClose={resetAndClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
+      <Dialog open={canMutate && open} onClose={resetAndClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
         <DialogTitle>{editing ? 'Edit Product' : 'Add Product'}</DialogTitle>
         <DialogContent>
           <form

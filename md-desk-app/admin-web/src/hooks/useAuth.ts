@@ -25,6 +25,14 @@ export function useAuth() {
 
   const login = async (email: string, password: string) => {
     const res = await authApi.login(email, password);
+    const role = (res.data.user as { role?: string }).role;
+    if (role !== 'ADMIN' && role !== 'EMPLOYEE') {
+      const err = new Error('Use the customer portal to sign in with this account.');
+      (err as Error & { response?: { data: { message: string } } }).response = {
+        data: { message: 'This portal is for administrators and staff only. Please use the customer app to sign in.' },
+      };
+      throw err;
+    }
     const t = res.data.token;
     localStorage.setItem('token', t);
     setToken(t);

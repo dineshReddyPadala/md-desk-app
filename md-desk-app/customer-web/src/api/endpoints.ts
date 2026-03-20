@@ -63,6 +63,15 @@ export const uploadApi = {
   },
 };
 
+export const dashboardApi = {
+  customerSummary: () =>
+    api.get<{
+      success: boolean;
+      activeProjects: Array<{ id: string; name: string; status: string; startDate?: string | null; endDate?: string | null; updatedAt: string }>;
+      complaintStats: { RECEIVED: number; UNDER_REVIEW: number; IN_PROGRESS: number; RESOLVED: number };
+    }>('/dashboard/customer-summary'),
+};
+
 export const notificationsApi = {
   list: (params?: { limit?: number }) =>
     api.get<{ success: boolean; items: Array<{ id: string; type: string; title: string; body?: string | null; readAt?: string | null; createdAt: string }> }>('/notifications', { params }),

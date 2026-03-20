@@ -2,12 +2,15 @@ const { composePreHandlers } = require('../../utils/preHandler');
 const projectsController = require('./projects.controller');
 const { createProjectSchema, updateProjectSchema, projectIdParam, updateStatusSchema } = require('./projects.validation');
 
+const ADMIN_OR_EMPLOYEE = ['ADMIN', 'EMPLOYEE'];
+
 async function projectsAdminRoutes(fastify) {
   const admin = composePreHandlers(fastify.authenticateJWT, fastify.authorizeRole('ADMIN'));
+  const staff = composePreHandlers(fastify.authenticateJWT, fastify.authorizeRole(ADMIN_OR_EMPLOYEE));
   const schema = { tags: ['projects'], security: [{ bearerAuth: [] }] };
 
   fastify.get('/', {
-    preHandler: admin,
+    preHandler: staff,
     schema: {
       ...schema,
       summary: 'List projects (admin)',
@@ -26,7 +29,7 @@ async function projectsAdminRoutes(fastify) {
   }, projectsController.bulkUpload);
 
   fastify.get('/:id', {
-    preHandler: admin,
+    preHandler: staff,
     schema: { ...schema, summary: 'Get project by id', params: projectIdParam.params },
   }, projectsController.getById);
 
