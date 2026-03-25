@@ -8,13 +8,18 @@ async function clientsAdminRoutes(fastify) {
 
   fastify.get('/', {
     preHandler: admin,
-    schema: { ...schema, summary: 'List clients (admin)', querystring: { type: 'object', properties: { search: { type: 'string' }, page: { type: 'integer' }, limit: { type: 'integer' } } } },
+    schema: { ...schema, summary: 'List clients (admin)', querystring: { type: 'object', properties: { search: { type: 'string' }, company: { type: 'string' }, fromDate: { type: 'string' }, toDate: { type: 'string' }, page: { type: 'integer' }, limit: { type: 'integer' } } } },
   }, clientsController.list);
 
   fastify.get('/template', {
     preHandler: admin,
     schema: { ...schema, summary: 'Download clients Excel template' },
   }, clientsController.template);
+
+  fastify.get('/export', {
+    preHandler: admin,
+    schema: { ...schema, summary: 'Export clients Excel', querystring: { type: 'object', properties: { search: { type: 'string' }, company: { type: 'string' }, fromDate: { type: 'string' }, toDate: { type: 'string' } } } },
+  }, clientsController.exportList);
 
   fastify.post('/bulk-upload', {
     preHandler: admin,

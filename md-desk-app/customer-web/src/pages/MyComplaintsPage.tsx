@@ -19,6 +19,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  TextField,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -36,11 +37,19 @@ export default function MyComplaintsPage() {
   const [page, setPage] = useState(0);
   const [limit, setLimit] = useState(10);
   const [status, setStatus] = useState<string>('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['my-complaints', page + 1, limit, status],
+    queryKey: ['my-complaints', page + 1, limit, status, fromDate, toDate],
     queryFn: async () =>
-      (await complaintsApi.myList({ page: page + 1, limit, status: status || undefined })).data,
+      (await complaintsApi.myList({
+        page: page + 1,
+        limit,
+        status: status || undefined,
+        fromDate: fromDate || undefined,
+        toDate: toDate || undefined,
+      })).data,
   });
 
   const items = (data?.items || []) as Array<{
@@ -92,6 +101,27 @@ export default function MyComplaintsPage() {
             <MenuItem value="RESOLVED">Resolved</MenuItem>
           </Select>
         </FormControl>
+        <TextField
+          size="small"
+          label="From date"
+          type="date"
+          value={fromDate}
+          onChange={(e) => { setFromDate(e.target.value); setPage(0); }}
+          InputLabelProps={{ shrink: true }}
+          sx={{ minWidth: 160 }}
+        />
+        <TextField
+          size="small"
+          label="To date"
+          type="date"
+          value={toDate}
+          onChange={(e) => { setToDate(e.target.value); setPage(0); }}
+          InputLabelProps={{ shrink: true }}
+          sx={{ minWidth: 160 }}
+        />
+        <Button variant="text" onClick={() => { setStatus(''); setFromDate(''); setToDate(''); setPage(0); }}>
+          Clear filters
+        </Button>
       </Paper>
 
       <TableContainer component={Paper}>

@@ -1,10 +1,10 @@
 const dealersService = require('./dealers.service');
 const XLSX = require('xlsx');
 const { assertBufferSize } = require('../../utils/uploadLimits');
+const { sendWorkbook } = require('../../utils/excel');
 
 async function list(req, reply) {
-  const { city } = req.query || {};
-  const list = await dealersService.list(req.server.prisma, city);
+  const list = await dealersService.list(req.server.prisma, req.query || {});
   return reply.send({ success: true, dealers: list });
 }
 
@@ -77,4 +77,19 @@ function template(req, reply) {
   return reply.send(buf);
 }
 
-module.exports = { list, getById, create, update, remove, bulkUpload, template };
+async function exportList(req, reply) {
+  const items = await dealersService.list(req.server.prisma, req.query || {});
+  return sendWorkbook(reply, 'dealers_export.xlsx', [{
+    name: 'Dealers',
+    rows: items.map((item) => ({
+      Name: item.name,
+      City: item.city || '',
+      Phone: item.phone || '',
+      ImageUrl: item.imageUrl || '',
+      LocationLat: item.locationLat ?? '',
+      LocationLong: item.locationLong ?? '',
+    })),
+  }]);
+}
+
+module.exports = { list, getById, create, update, remove, bulkUpload, template, exportList };

@@ -37,7 +37,8 @@ async function messagesRoutes(fastify) {
   }, messagesController.myList);
 
   const admin = composePreHandlers(fastify.authenticateJWT, fastify.authorizeRole('ADMIN'));
-  fastify.get('/admin', { preHandler: admin, schema: { tags: ['messages'], summary: 'List messages (admin)', security: [{ bearerAuth: [] }] } }, messagesController.adminList);
+  fastify.get('/admin', { preHandler: admin, schema: { tags: ['messages'], summary: 'List messages (admin)', security: [{ bearerAuth: [] }], querystring: { type: 'object', properties: { page: { type: 'integer' }, limit: { type: 'integer' }, replyStatus: { type: 'string' }, fromDate: { type: 'string' }, toDate: { type: 'string' } } } } }, messagesController.adminList);
+  fastify.get('/admin/export', { preHandler: admin, schema: { tags: ['messages'], summary: 'Export messages (admin)', security: [{ bearerAuth: [] }], querystring: { type: 'object', properties: { replyStatus: { type: 'string' }, fromDate: { type: 'string' }, toDate: { type: 'string' } } } } }, messagesController.exportAdmin);
   fastify.get('/admin/:id', { preHandler: admin, schema: { tags: ['messages'], summary: 'Get message (admin)', security: [{ bearerAuth: [] }], params: { type: 'object', properties: { id: { type: 'string' } }, required: ['id'] } } }, messagesController.getById);
   fastify.post(
     '/admin/:id/reply',

@@ -27,7 +27,9 @@ import {
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import DownloadIcon from '@mui/icons-material/Download';
 import { complaintsApi } from '../api/endpoints';
+import { downloadBlob } from '../utils/downloadBlob';
 
 const statusColors: Record<string, 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'> = {
   RECEIVED: 'info',
@@ -47,14 +49,25 @@ export default function ComplaintsPage() {
   const [status, setStatus] = useState<string>('');
   const [priority, setPriority] = useState<string>('');
   const [city, setCity] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [search, setSearch] = useState('');
   const [detailId, setDetailId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-complaints', page, limit, status, priority, city],
+    queryKey: ['admin-complaints', page, limit, status, priority, city, fromDate, toDate, search],
     queryFn: async () =>
-      (await complaintsApi.list({ page: page + 1, limit, status: status || undefined, priority: priority || undefined, city: city || undefined })).data,
+      (await complaintsApi.list({
+        page: page + 1,
+        limit,
+        status: status || undefined,
+        priority: priority || undefined,
+        city: city || undefined,
+        fromDate: fromDate || undefined,
+        toDate: toDate || undefined,
+        search: search || undefined,
+      })).data,
   });
 
   const items = (data?.items || []) as Array<{
@@ -75,14 +88,17 @@ export default function ComplaintsPage() {
     enabled: !!detailId,
   });
   const complaint = detailData?.complaint as { complaintId: string; status: string; priority: string; category?: string; description: string; projectLocation: string; user?: { name: string; email: string } } | undefined;
-  const filteredItems = search.trim()
-    ? items.filter(
-        (row) =>
-          row.complaintId.toLowerCase().includes(search.toLowerCase()) ||
-          (row.user?.name || '').toLowerCase().includes(search.toLowerCase()) ||
-          (row.user?.email || '').toLowerCase().includes(search.toLowerCase())
-      )
-    : items;
+  const handleExport = async () => {
+    const res = await complaintsApi.export({
+      status: status || undefined,
+      priority: priority || undefined,
+      city: city || undefined,
+      fromDate: fromDate || undefined,
+      toDate: toDate || undefined,
+      search: search || undefined,
+    });
+    downloadBlob(res.data, 'complaints_export.xlsx');
+  };
 
   return (
     <Box>
@@ -93,14 +109,32 @@ export default function ComplaintsPage() {
           size="small"
           placeholder="Search by ID, name or email…"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setPage(0); }}
           sx={{ minWidth: 260 }}
           InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon color="action" /></InputAdornment> }}
         />
-        <TextField size="small" label="City" value={city} onChange={(e) => setCity(e.target.value)} sx={{ minWidth: 120 }} />
+        <TextField size="small" label="City" value={city} onChange={(e) => { setCity(e.target.value); setPage(0); }} sx={{ minWidth: 120 }} />
+        <TextField
+          size="small"
+          label="From date"
+          type="date"
+          value={fromDate}
+          onChange={(e) => { setFromDate(e.target.value); setPage(0); }}
+          sx={{ minWidth: 160 }}
+          InputLabelProps={{ shrink: true }}
+        />
+        <TextField
+          size="small"
+          label="To date"
+          type="date"
+          value={toDate}
+          onChange={(e) => { setToDate(e.target.value); setPage(0); }}
+          sx={{ minWidth: 160 }}
+          InputLabelProps={{ shrink: true }}
+        />
         <FormControl size="small" sx={{ minWidth: 140 }}>
           <InputLabel>Status</InputLabel>
-          <Select value={status} label="Status" onChange={(e) => setStatus(e.target.value)}>
+          <Select value={status} label="Status" onChange={(e) => { setStatus(e.target.value); setPage(0); }}>
             <MenuItem value="">All</MenuItem>
             <MenuItem value="RECEIVED">Received</MenuItem>
             <MenuItem value="UNDER_REVIEW">Under Review</MenuItem>
@@ -110,13 +144,30 @@ export default function ComplaintsPage() {
         </FormControl>
         <FormControl size="small" sx={{ minWidth: 140 }}>
           <InputLabel>Priority</InputLabel>
-          <Select value={priority} label="Priority" onChange={(e) => setPriority(e.target.value)}>
+          <Select value={priority} label="Priority" onChange={(e) => { setPriority(e.target.value); setPage(0); }}>
             <MenuItem value="">All</MenuItem>
             <MenuItem value="HIGH">High</MenuItem>
             <MenuItem value="MEDIUM">Medium</MenuItem>
             <MenuItem value="LOW">Low</MenuItem>
           </Select>
         </FormControl>
+        <Button
+          variant="text"
+          onClick={() => {
+            setCity('');
+            setStatus('');
+            setPriority('');
+            setFromDate('');
+            setToDate('');
+            setSearch('');
+            setPage(0);
+          }}
+        >
+          Clear filters
+        </Button>
+        <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => void handleExport()}>
+          Export Excel
+        </Button>
       </Paper>
       <TableContainer component={Paper}>
         <Table>
@@ -137,7 +188,7 @@ export default function ComplaintsPage() {
               ? Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}><TableCell colSpan={8}><Skeleton height={48} /></TableCell></TableRow>
                 ))
-              : filteredItems.map((row) => (
+              : items.map((row) => (
                   <TableRow key={row.id} hover>
                     <TableCell sx={{ fontFamily: 'monospace' }}>{row.complaintId}</TableCell>
                     <TableCell>{row.user?.name || '—'}<Typography variant="caption" display="block" color="text.secondary">{row.user?.email}</Typography></TableCell>
@@ -157,10 +208,10 @@ export default function ComplaintsPage() {
         <TablePagination
           rowsPerPageOptions={[5, 10, 25]}
           component="div"
-          count={search ? filteredItems.length : (data?.total ?? 0)}
+          count={data?.total ?? 0}
           rowsPerPage={limit}
-          page={search ? 0 : page}
-          onPageChange={(_, p) => !search && setPage(p)}
+          page={page}
+          onPageChange={(_, p) => setPage(p)}
           onRowsPerPageChange={(e) => { setLimit(Number(e.target.value)); setPage(0); }}
         />
       </TableContainer>

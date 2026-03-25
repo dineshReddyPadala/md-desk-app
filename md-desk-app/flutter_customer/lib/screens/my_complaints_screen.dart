@@ -17,8 +17,13 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
   int _page = 1;
   int _limit = 10;
   String? _statusFilter;
+  DateTime? _fromDate;
+  DateTime? _toDate;
   bool _loading = true;
   String? _error;
+
+  String? get _fromDateValue => _fromDate?.toIso8601String().split('T').first;
+  String? get _toDateValue => _toDate?.toIso8601String().split('T').first;
 
   Future<void> _load() async {
     final client = context.read<AuthProvider>().client;
@@ -32,6 +37,8 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
         'page': _page.toString(),
         'limit': _limit.toString(),
         if (_statusFilter != null && _statusFilter!.isNotEmpty) 'status': _statusFilter!,
+        if (_fromDateValue != null) 'fromDate': _fromDateValue!,
+        if (_toDateValue != null) 'toDate': _toDateValue!,
       };
       final qs = query.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&');
       final res = await client.get('/complaints/my?$qs');
@@ -54,6 +61,34 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  Future<void> _pickDate({required bool isFromDate}) async {
+    final initialDate = isFromDate
+        ? (_fromDate ?? DateTime.now())
+        : (_toDate ?? _fromDate ?? DateTime.now());
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (picked == null) return;
+    setState(() {
+      if (isFromDate) {
+        _fromDate = picked;
+        if (_toDate != null && picked.isAfter(_toDate!)) {
+          _toDate = picked;
+        }
+      } else {
+        _toDate = picked;
+        if (_fromDate != null && picked.isBefore(_fromDate!)) {
+          _fromDate = picked;
+        }
+      }
+      _page = 1;
+    });
+    _load();
   }
 
   @override
@@ -85,9 +120,12 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 12,
                 children: [
-                  Expanded(
+                  SizedBox(
+                    width: 240,
                     child: DropdownButtonFormField<String>(
                       value: _statusFilter ?? '',
                       decoration: const InputDecoration(
@@ -110,6 +148,32 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
                         _load();
                       },
                     ),
+                  ),
+                  SizedBox(
+                    width: 180,
+                    child: OutlinedButton(
+                      onPressed: () => _pickDate(isFromDate: true),
+                      child: Text(_fromDateValue == null ? 'From date' : 'From: $_fromDateValue'),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 180,
+                    child: OutlinedButton(
+                      onPressed: () => _pickDate(isFromDate: false),
+                      child: Text(_toDateValue == null ? 'To date' : 'To: $_toDateValue'),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _statusFilter = null;
+                        _fromDate = null;
+                        _toDate = null;
+                        _page = 1;
+                      });
+                      _load();
+                    },
+                    child: const Text('Clear filters'),
                   ),
                 ],
               ),

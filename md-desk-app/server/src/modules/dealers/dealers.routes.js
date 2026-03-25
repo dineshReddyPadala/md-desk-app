@@ -6,7 +6,7 @@ async function dealersRoutes(fastify) {
     schema: {
       tags: ['dealers'],
       summary: 'List dealers (public)',
-      querystring: { type: 'object', properties: { city: { type: 'string' } } },
+      querystring: { type: 'object', properties: { city: { type: 'string' }, search: { type: 'string' } } },
     },
   }, dealersController.list);
   fastify.get('/:id', {

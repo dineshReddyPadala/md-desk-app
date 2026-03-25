@@ -37,6 +37,9 @@ const queryListSchema = {
       status: { type: 'string' },
       priority: { type: 'string' },
       city: { type: 'string' },
+      fromDate: { type: 'string' },
+      toDate: { type: 'string' },
+      search: { type: 'string' },
     },
   },
 };

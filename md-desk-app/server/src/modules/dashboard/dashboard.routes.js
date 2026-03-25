@@ -7,6 +7,7 @@ async function dashboardRoutes(fastify) {
   const staff = composePreHandlers(fastify.authenticateJWT, fastify.authorizeRole(ADMIN_OR_EMPLOYEE));
   const adminSchema = { tags: ['dashboard'], security: [{ bearerAuth: [] }] };
   fastify.get('/summary', { preHandler: staff, schema: { ...adminSchema, summary: 'Dashboard summary counts' } }, dashboardController.summary);
+  fastify.get('/export', { preHandler: staff, schema: { ...adminSchema, summary: 'Export dashboard and report data', querystring: { type: 'object', properties: { days: { type: 'integer', default: 7 } } } } }, dashboardController.exportDashboard);
   fastify.get('/region-stats', { preHandler: staff, schema: { ...adminSchema, summary: 'Complaints by region' } }, dashboardController.regionStats);
   fastify.get('/project-complaint-stats', { preHandler: staff, schema: { ...adminSchema, summary: 'Complaints by project (via client mapping)' } }, dashboardController.projectComplaintStats);
   fastify.get('/status-stats', { preHandler: staff, schema: { ...adminSchema, summary: 'Complaints by status (for donut)' } }, dashboardController.statusStats);

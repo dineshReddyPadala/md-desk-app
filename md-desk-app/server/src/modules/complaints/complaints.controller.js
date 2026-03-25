@@ -3,6 +3,7 @@ const employeeProjectScope = require('../../utils/employeeProjectScope');
 const notificationsService = require('../notifications/notifications.service');
 const emailService = require('../../services/email.service');
 const { getIo } = require('../../socket');
+const { sendWorkbook } = require('../../utils/excel');
 
 async function createComplaint(req, reply) {
   const body = req.body || {};
@@ -47,6 +48,32 @@ async function createComplaint(req, reply) {
       complaint.complaintId
     ).catch((err) => { req.log?.error?.(err) || console.error('Acknowledgment email failed:', err); });
   }
+  try {
+    const admins = await req.server.prisma.user.findMany({
+      where: { role: 'ADMIN', email: { not: null } },
+      select: { email: true },
+    });
+    const assignedEmployees = complaint.projectId
+      ? await req.server.prisma.projectEmployee.findMany({
+          where: { projectId: complaint.projectId },
+          select: { employee: { select: { email: true } } },
+        })
+      : [];
+    const recipients = [...new Set([
+      ...admins.map((user) => user.email).filter(Boolean),
+      ...assignedEmployees.map((assignment) => assignment.employee?.email).filter(Boolean),
+    ])];
+    await Promise.all(recipients.map((toEmail) => emailService.sendComplaintRaisedStaffEmail(toEmail, {
+      complaintId: complaint.complaintId,
+      customerName: body.name || req.user.name || 'Customer',
+      category: complaint.category,
+      projectName: complaint.project?.name,
+      projectLocation: complaint.projectLocation,
+      description: complaint.description,
+    })));
+  } catch (err) {
+    req.log?.error?.(err) || console.error('Complaint raised staff email failed:', err);
+  }
   return reply.status(201).send({
     success: true,
     complaint_id: complaint.complaintId,
@@ -56,14 +83,16 @@ async function createComplaint(req, reply) {
 }
 
 async function myComplaints(req, reply) {
-  const { page = 1, limit = 10, status, priority } = req.query || {};
+  const { page = 1, limit = 10, status, priority, fromDate, toDate } = req.query || {};
   const result = await complaintsService.getMyComplaints(
     req.server.prisma,
     req.user.id,
     Number(page),
     Number(limit),
     status,
-    priority
+    priority,
+    fromDate,
+    toDate
   );
   return reply.send({ success: true, ...result });
 }
@@ -96,7 +125,7 @@ async function getByComplaintId(req, reply) {
 }
 
 async function adminList(req, reply) {
-  const { page = 1, limit = 10, status, priority, city } = req.query || {};
+  const { page = 1, limit = 10, status, priority, city, fromDate, toDate, search } = req.query || {};
   let scopeWhere = null;
   if (req.user?.role === 'EMPLOYEE') {
     scopeWhere = await employeeProjectScope.employeeComplaintWhere(req.server.prisma, req.user.id);
@@ -108,7 +137,10 @@ async function adminList(req, reply) {
     status,
     priority,
     city,
-    scopeWhere
+    scopeWhere,
+    fromDate,
+    toDate,
+    search
   );
   return reply.send({ success: true, ...result });
 }
@@ -126,6 +158,42 @@ async function highPriority(req, reply) {
     scopeWhere
   );
   return reply.send({ success: true, ...result });
+}
+
+async function exportList(req, reply) {
+  const { status, priority, city, fromDate, toDate, search } = req.query || {};
+  let scopeWhere = null;
+  if (req.user?.role === 'EMPLOYEE') {
+    scopeWhere = await employeeProjectScope.employeeComplaintWhere(req.server.prisma, req.user.id);
+  }
+  const items = await complaintsService.adminListComplaintsForExport(
+    req.server.prisma,
+    status,
+    priority,
+    city,
+    scopeWhere,
+    fromDate,
+    toDate,
+    search
+  );
+  return sendWorkbook(reply, 'complaints_export.xlsx', [{
+    name: 'Complaints',
+    rows: items.map((item) => ({
+      ComplaintID: item.complaintId,
+      CustomerName: item.name || item.user?.name || '',
+      CustomerEmail: item.user?.email || '',
+      CustomerPhone: item.phone || item.user?.phone || '',
+      Category: item.category || '',
+      Priority: item.priority,
+      Status: item.status,
+      Project: item.project?.name || '',
+      ProjectLocation: item.projectLocation,
+      City: item.city || '',
+      Description: item.description,
+      CreatedAt: item.createdAt.toISOString(),
+      UpdatedAt: item.updatedAt.toISOString(),
+    })),
+  }]);
 }
 
 async function updateStatus(req, reply) {
@@ -177,5 +245,6 @@ module.exports = {
   getByComplaintId,
   adminList,
   highPriority,
+  exportList,
   updateStatus,
 };

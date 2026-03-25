@@ -20,13 +20,19 @@ import {
   Alert,
   TablePagination,
 } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DownloadIcon from '@mui/icons-material/Download';
+import SearchIcon from '@mui/icons-material/Search';
 import { clientsApi, type ClientDto } from '../api/endpoints';
 import { getBackendErrorMessage } from '../api/getBackendErrorMessage';
 import { validateFilesMaxSize } from '../constants/uploadAccept';
+import { downloadBlob } from '../utils/downloadBlob';
+
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const phonePattern = /^[0-9+\-() ]{7,20}$/;
 
 export default function ClientsPage() {
   const [open, setOpen] = useState(false);
@@ -37,19 +43,51 @@ export default function ClientsPage() {
   const [company, setCompany] = useState('');
   const [bulkFile, setBulkFile] = useState<File | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [companyFilter, setCompanyFilter] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['clients', page + 1, rowsPerPage],
-    queryFn: async () => (await clientsApi.list({ page: page + 1, limit: rowsPerPage })).data,
+    queryKey: ['clients', page + 1, rowsPerPage, search, companyFilter, fromDate, toDate],
+    queryFn: async () => (await clientsApi.list({
+      page: page + 1,
+      limit: rowsPerPage,
+      search: search || undefined,
+      company: companyFilter || undefined,
+      fromDate: fromDate || undefined,
+      toDate: toDate || undefined,
+    })).data,
   });
   const clients = (data?.clients || []) as ClientDto[];
   const total = data?.total ?? 0;
 
+  const createMutation = useMutation({
+    mutationFn: () =>
+      clientsApi.create({
+        name: name.trim(),
+        phone: phone.trim() || undefined,
+        email: email.trim(),
+        company: company.trim() || undefined,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['clients'] });
+      resetAndClose();
+    },
+  });
   const updateMutation = useMutation({
-    mutationFn: () => editing ? clientsApi.update(editing.id, { name: name.trim(), phone: phone || undefined, email: email || undefined, company: company || undefined }) : Promise.reject(),
+    mutationFn: () =>
+      editing
+        ? clientsApi.update(editing.id, {
+            name: name.trim(),
+            phone: phone.trim() || undefined,
+            email: email.trim() || undefined,
+            company: company.trim() || undefined,
+          })
+        : Promise.reject(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['clients'] });
       resetAndClose();
@@ -91,30 +129,57 @@ export default function ClientsPage() {
     setOpen(true);
   };
 
+  const handleOpenAdd = () => {
+    setEditing(null);
+    setName('');
+    setPhone('');
+    setEmail('');
+    setCompany('');
+    setOpen(true);
+  };
+
   const handleDownloadTemplate = async () => {
     try {
       const res = await clientsApi.downloadTemplate();
-      const url = URL.createObjectURL(res.data as Blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'clients_template.xlsx';
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadBlob(res.data, 'clients_template.xlsx');
     } catch {
       setBulkError('Failed to download template');
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      const res = await clientsApi.export({
+        search: search || undefined,
+        company: companyFilter || undefined,
+        fromDate: fromDate || undefined,
+        toDate: toDate || undefined,
+      });
+      downloadBlob(res.data, 'clients_export.xlsx');
+    } catch {
+      setBulkError('Failed to export clients');
     }
   };
 
   const doSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (editing) updateMutation.mutate();
+    else createMutation.mutate();
   };
+
+  const trimmedEmail = email.trim();
+  const trimmedPhone = phone.trim();
+  const emailError = trimmedEmail ? !emailPattern.test(trimmedEmail) : false;
+  const phoneError = trimmedPhone ? !phonePattern.test(trimmedPhone) : false;
+  const mutationError = createMutation.error || updateMutation.error;
 
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 3 }}>
         <Typography variant="h4" fontWeight={700}>Client Management</Typography>
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenAdd}>Add client</Button>
+          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExport}>Export Excel</Button>
           <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownloadTemplate}>Download template</Button>
           <Button component="label" variant="outlined" startIcon={<UploadFileIcon />}>
             Excel upload
@@ -144,6 +209,44 @@ export default function ClientsPage() {
         </Box>
       </Box>
       {bulkError && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setBulkError(null)}>{bulkError}</Alert>}
+      <Paper sx={{ mb: 2, p: 2, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+        <TextField
+          size="small"
+          placeholder="Search by name, email, phone..."
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+          sx={{ minWidth: 240 }}
+          InputProps={{ startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} /> }}
+        />
+        <TextField
+          size="small"
+          label="Company"
+          value={companyFilter}
+          onChange={(e) => { setCompanyFilter(e.target.value); setPage(0); }}
+          sx={{ minWidth: 180 }}
+        />
+        <TextField
+          size="small"
+          label="From date"
+          type="date"
+          value={fromDate}
+          onChange={(e) => { setFromDate(e.target.value); setPage(0); }}
+          InputLabelProps={{ shrink: true }}
+          sx={{ minWidth: 160 }}
+        />
+        <TextField
+          size="small"
+          label="To date"
+          type="date"
+          value={toDate}
+          onChange={(e) => { setToDate(e.target.value); setPage(0); }}
+          InputLabelProps={{ shrink: true }}
+          sx={{ minWidth: 160 }}
+        />
+        <Button onClick={() => { setSearch(''); setCompanyFilter(''); setFromDate(''); setToDate(''); setPage(0); }}>
+          Clear filters
+        </Button>
+      </Paper>
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -188,20 +291,40 @@ export default function ClientsPage() {
       </TableContainer>
 
       <Dialog open={open} onClose={resetAndClose} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 2 } }}>
-        <DialogTitle>Edit Client</DialogTitle>
+        <DialogTitle>{editing ? 'Edit Client' : 'Add Client'}</DialogTitle>
         <DialogContent>
           <form onSubmit={doSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16, paddingTop: 8 }}>
             <TextField fullWidth label="Name" value={name} onChange={(e) => setName(e.target.value)} required />
-            <TextField fullWidth label="Phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            <TextField fullWidth label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <TextField
+              fullWidth
+              label="Phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              error={phoneError}
+              helperText={phoneError ? 'Enter a valid phone number.' : 'Optional'}
+            />
+            <TextField
+              fullWidth
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              error={emailError}
+              helperText={emailError ? 'Enter a valid email address.' : undefined}
+              required
+            />
             <TextField fullWidth label="Company" value={company} onChange={(e) => setCompany(e.target.value)} />
-            {updateMutation.isError && (
-              <Alert severity="error">{getBackendErrorMessage(updateMutation.error)}</Alert>
+            {mutationError && (
+              <Alert severity="error">{getBackendErrorMessage(mutationError)}</Alert>
             )}
             <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
               <Button onClick={resetAndClose}>Cancel</Button>
-              <Button type="submit" variant="contained" disabled={updateMutation.isPending || !name.trim() || !email.trim()}>
-                Update
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={createMutation.isPending || updateMutation.isPending || !name.trim() || !trimmedEmail || emailError || phoneError}
+              >
+                {editing ? 'Update' : 'Create'}
               </Button>
             </Box>
           </form>

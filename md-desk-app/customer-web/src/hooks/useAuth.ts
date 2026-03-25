@@ -21,7 +21,7 @@ export function useAuth() {
       .finally(() => setIsLoading(false));
   }, [token]);
 
-  const register = async (data: { name: string; email: string; otp: string; password: string; confirmPassword: string; phone?: string; city?: string }) => {
+  const register = async (data: { name: string; email: string; otp: string; password: string; confirmPassword: string; phone?: string; city?: string; company?: string }) => {
     const res = await authApi.register(data);
     const t = res.data.token;
     localStorage.setItem('token', t);

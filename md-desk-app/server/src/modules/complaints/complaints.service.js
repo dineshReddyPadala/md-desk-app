@@ -8,12 +8,40 @@ function generateComplaintId() {
   return `${prefix}-${date}-${short}`;
 }
 
-function buildListWhere(status, priority, city, scopeWhere) {
+function parseDateStart(value) {
+  if (!value) return null;
+  const parsed = new Date(`${String(value).trim()}T00:00:00.000Z`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function parseDateEnd(value) {
+  if (!value) return null;
+  const parsed = new Date(`${String(value).trim()}T23:59:59.999Z`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function buildListWhere(status, priority, city, scopeWhere, fromDate, toDate, search) {
   const filters = [];
   if (scopeWhere && Object.keys(scopeWhere).length) filters.push(scopeWhere);
   if (status) filters.push({ status });
   if (priority) filters.push({ priority });
   if (city) filters.push({ city: { contains: city, mode: 'insensitive' } });
+  if (search && String(search).trim()) {
+    const term = String(search).trim();
+    filters.push({
+      OR: [
+        { complaintId: { contains: term, mode: 'insensitive' } },
+        { user: { is: { name: { contains: term, mode: 'insensitive' } } } },
+        { user: { is: { email: { contains: term, mode: 'insensitive' } } } },
+      ],
+    });
+  }
+  const createdAt = {};
+  const createdAfter = parseDateStart(fromDate);
+  const createdBefore = parseDateEnd(toDate);
+  if (createdAfter) createdAt.gte = createdAfter;
+  if (createdBefore) createdAt.lte = createdBefore;
+  if (Object.keys(createdAt).length) filters.push({ createdAt });
   if (filters.length === 0) return {};
   if (filters.length === 1) return filters[0];
   return { AND: filters };
@@ -104,11 +132,17 @@ async function createComplaint(prisma, userId, data, fileUrls = []) {
   return complaint;
 }
 
-async function getMyComplaints(prisma, userId, page = 1, limit = 10, status, priority) {
+async function getMyComplaints(prisma, userId, page = 1, limit = 10, status, priority, fromDate = null, toDate = null) {
   const skip = (page - 1) * limit;
   const where = { userId };
   if (status) where.status = status;
   if (priority) where.priority = priority;
+  const createdAt = {};
+  const createdAfter = parseDateStart(fromDate);
+  const createdBefore = parseDateEnd(toDate);
+  if (createdAfter) createdAt.gte = createdAfter;
+  if (createdBefore) createdAt.lte = createdBefore;
+  if (Object.keys(createdAt).length) where.createdAt = createdAt;
   const [items, total] = await Promise.all([
     prisma.complaint.findMany({
       where,
@@ -159,9 +193,9 @@ async function getComplaintByComplaintId(prisma, complaintId, userId) {
   return complaint;
 }
 
-async function adminListComplaints(prisma, page = 1, limit = 10, status, priority, city, scopeWhere = null) {
+async function adminListComplaints(prisma, page = 1, limit = 10, status, priority, city, scopeWhere = null, fromDate = null, toDate = null, search = null) {
   const skip = (page - 1) * limit;
-  const where = buildListWhere(status, priority, city, scopeWhere);
+  const where = buildListWhere(status, priority, city, scopeWhere, fromDate, toDate, search);
   const [items, total] = await Promise.all([
     prisma.complaint.findMany({
       where,
@@ -177,6 +211,18 @@ async function adminListComplaints(prisma, page = 1, limit = 10, status, priorit
     prisma.complaint.count({ where }),
   ]);
   return { items, total, page, limit, totalPages: Math.ceil(total / limit) };
+}
+
+async function adminListComplaintsForExport(prisma, status, priority, city, scopeWhere = null, fromDate = null, toDate = null, search = null) {
+  const where = buildListWhere(status, priority, city, scopeWhere, fromDate, toDate, search);
+  return prisma.complaint.findMany({
+    where,
+    include: {
+      user: { select: { name: true, email: true, phone: true } },
+      project: { select: { id: true, name: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+  });
 }
 
 async function getHighPriority(prisma, page = 1, limit = 20, scopeWhere = null) {
@@ -280,6 +326,7 @@ module.exports = {
   getComplaintById,
   getComplaintByComplaintId,
   adminListComplaints,
+  adminListComplaintsForExport,
   getHighPriority,
   updateStatus,
 };

@@ -1,6 +1,7 @@
 const clientsService = require('./clients.service');
 const XLSX = require('xlsx');
 const { assertBufferSize } = require('../../utils/uploadLimits');
+const { sendWorkbook } = require('../../utils/excel');
 
 async function list(req, reply) {
   const result = await clientsService.list(req.server.prisma, req.query || {});
@@ -30,6 +31,21 @@ async function remove(req, reply) {
   if (!existing) return reply.status(404).send({ success: false, message: 'Client not found' });
   await clientsService.remove(req.server.prisma, req.params.id);
   return reply.send({ success: true });
+}
+
+async function exportList(req, reply) {
+  const items = await clientsService.listAll(req.server.prisma, req.query || {});
+  return sendWorkbook(reply, 'clients_export.xlsx', [{
+    name: 'Clients',
+    rows: items.map((item) => ({
+      Name: item.name,
+      Email: item.email || '',
+      Phone: item.phone || '',
+      Company: item.company || '',
+      CreatedAt: item.createdAt.toISOString(),
+      UpdatedAt: item.updatedAt.toISOString(),
+    })),
+  }]);
 }
 
 async function bulkUpload(req, reply) {
@@ -71,4 +87,4 @@ function template(req, reply) {
   return reply.send(buf);
 }
 
-module.exports = { list, getById, create, update, remove, bulkUpload, template };
+module.exports = { list, getById, create, update, remove, bulkUpload, template, exportList };

@@ -27,11 +27,24 @@ function toClientShape(user) {
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 100;
 
+function buildDateRange(fromDate, toDate) {
+  const createdAt = {};
+  if (fromDate) {
+    const parsed = new Date(`${String(fromDate).trim()}T00:00:00.000Z`);
+    if (!Number.isNaN(parsed.getTime())) createdAt.gte = parsed;
+  }
+  if (toDate) {
+    const parsed = new Date(`${String(toDate).trim()}T23:59:59.999Z`);
+    if (!Number.isNaN(parsed.getTime())) createdAt.lte = parsed;
+  }
+  return Object.keys(createdAt).length ? createdAt : null;
+}
+
 async function list(prisma, query = {}) {
-  const { search, page = 1, limit = DEFAULT_LIMIT } = query;
+  const { search, company, fromDate, toDate, page = 1, limit = DEFAULT_LIMIT } = query;
   const where = { role: 'CUSTOMER' };
   if (search && String(search).trim()) {
-    const term = `%${String(search).trim()}%`;
+    const term = String(search).trim();
     where.OR = [
       { name: { contains: term, mode: 'insensitive' } },
       { email: { contains: term, mode: 'insensitive' } },
@@ -39,6 +52,11 @@ async function list(prisma, query = {}) {
       { company: { contains: term, mode: 'insensitive' } },
     ];
   }
+  if (company && String(company).trim()) {
+    where.company = { contains: String(company).trim(), mode: 'insensitive' };
+  }
+  const createdAt = buildDateRange(fromDate, toDate);
+  if (createdAt) where.createdAt = createdAt;
   const take = Math.min(Math.max(1, parseInt(limit, 10) || DEFAULT_LIMIT), MAX_LIMIT);
   const skip = (Math.max(1, parseInt(page, 10) || 1) - 1) * take;
   const [users, total] = await Promise.all([
@@ -55,6 +73,31 @@ async function list(prisma, query = {}) {
   return { items, total, page: Math.floor(skip / take) + 1, limit: take, totalPages: Math.ceil(total / take) };
 }
 
+async function listAll(prisma, query = {}) {
+  const { search, company, fromDate, toDate } = query;
+  const where = { role: 'CUSTOMER' };
+  if (search && String(search).trim()) {
+    const term = String(search).trim();
+    where.OR = [
+      { name: { contains: term, mode: 'insensitive' } },
+      { email: { contains: term, mode: 'insensitive' } },
+      { phone: { contains: term, mode: 'insensitive' } },
+      { company: { contains: term, mode: 'insensitive' } },
+    ];
+  }
+  if (company && String(company).trim()) {
+    where.company = { contains: String(company).trim(), mode: 'insensitive' };
+  }
+  const createdAt = buildDateRange(fromDate, toDate);
+  if (createdAt) where.createdAt = createdAt;
+  const users = await prisma.user.findMany({
+    where,
+    orderBy: { name: 'asc' },
+    select: { id: true, name: true, email: true, phone: true, company: true, createdAt: true, updatedAt: true },
+  });
+  return users.map(toClientShape);
+}
+
 async function getById(prisma, id) {
   const user = await prisma.user.findFirst({
     where: { id, role: 'CUSTOMER' },
@@ -65,7 +108,13 @@ async function getById(prisma, id) {
 }
 
 async function create(prisma, data) {
+  const name = (data.name || '').trim();
   const email = (data.email || '').toLowerCase().trim();
+  if (!name) {
+    const err = new Error('Name is required for client');
+    err.statusCode = 400;
+    throw err;
+  }
   if (!email) {
     const err = new Error('Email is required for client');
     err.statusCode = 400;
@@ -81,10 +130,10 @@ async function create(prisma, data) {
   const hashed = await hashPassword(temporaryPassword);
   const user = await prisma.user.create({
     data: {
-      name: data.name,
+      name,
       email,
-      phone: data.phone || null,
-      company: data.company || null,
+      phone: data.phone ? String(data.phone).trim() || null : null,
+      company: data.company ? String(data.company).trim() || null : null,
       role: 'CUSTOMER',
       password: hashed,
     },
@@ -98,10 +147,10 @@ async function update(prisma, id, data) {
   const user = await prisma.user.findFirst({ where: { id, role: 'CUSTOMER' } });
   if (!user) return null;
   const updateData = {};
-  if (data.name != null) updateData.name = data.name;
-  if (data.phone !== undefined) updateData.phone = data.phone || null;
+  if (data.name != null) updateData.name = String(data.name).trim();
+  if (data.phone !== undefined) updateData.phone = data.phone ? String(data.phone).trim() || null : null;
   if (data.email !== undefined) updateData.email = (data.email || '').toLowerCase().trim();
-  if (data.company !== undefined) updateData.company = data.company || null;
+  if (data.company !== undefined) updateData.company = data.company ? String(data.company).trim() || null : null;
   const updated = await prisma.user.update({
     where: { id },
     data: updateData,
@@ -160,4 +209,4 @@ async function bulkCreateFromRows(prisma, rows) {
   return { created, errors };
 }
 
-module.exports = { list, getById, create, update, remove, bulkCreateFromRows };
+module.exports = { list, listAll, getById, create, update, remove, bulkCreateFromRows };

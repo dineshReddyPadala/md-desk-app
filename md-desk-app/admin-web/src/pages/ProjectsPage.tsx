@@ -46,12 +46,24 @@ import {
 import { getBackendErrorMessage } from '../api/getBackendErrorMessage';
 import { useStaffRole } from '../hooks/useStaffRole';
 import { ACCEPT_FULL_MEDIA, validateFilesFullMedia, validateFilesMaxSize } from '../constants/uploadAccept';
+import { downloadBlob } from '../utils/downloadBlob';
 
 const STATUS_OPTIONS: { value: ProjectDto['status']; label: string }[] = [
   { value: 'PENDING', label: 'Pending' },
   { value: 'IN_PROGRESS', label: 'In Progress' },
   { value: 'COMPLETED', label: 'Completed' },
 ];
+
+function parseProjectDocumentUrls(documentUrl?: string | null) {
+  return String(documentUrl || '')
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function joinProjectDocumentUrls(urls: string[]) {
+  return urls.map((item) => item.trim()).filter(Boolean).join('\n');
+}
 
 export default function ProjectsPage() {
   const { canMutate } = useStaffRole();
@@ -60,10 +72,14 @@ export default function ProjectsPage() {
   const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [documentFiles, setDocumentFiles] = useState<File[]>([]);
   const [clientId, setClientId] = useState('');
+  const [filterClientId, setFilterClientId] = useState('');
   const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
   const [status, setStatus] = useState<ProjectDto['status']>('PENDING');
+  const [filterStatus, setFilterStatus] = useState('');
+  const [filterFromDate, setFilterFromDate] = useState('');
+  const [filterToDate, setFilterToDate] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -77,13 +93,20 @@ export default function ProjectsPage() {
   const [editClientId, setEditClientId] = useState('');
   const [editStatus, setEditStatus] = useState<ProjectDto['status']>('PENDING');
   const [editAssigneeIds, setEditAssigneeIds] = useState<string[]>([]);
-  const [editDocumentFile, setEditDocumentFile] = useState<File | null>(null);
+  const [editDocumentFiles, setEditDocumentFiles] = useState<File[]>([]);
   const [editError, setEditError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data: projectsData, isLoading } = useQuery({
-    queryKey: ['projects', page + 1, rowsPerPage],
-    queryFn: async () => (await projectsApi.list({ page: page + 1, limit: rowsPerPage })).data,
+    queryKey: ['projects', page + 1, rowsPerPage, filterStatus, filterClientId, filterFromDate, filterToDate],
+    queryFn: async () => (await projectsApi.list({
+      page: page + 1,
+      limit: rowsPerPage,
+      status: filterStatus || undefined,
+      clientId: filterClientId || undefined,
+      fromDate: filterFromDate || undefined,
+      toDate: filterToDate || undefined,
+    })).data,
   });
   const { data: clientsData } = useQuery({
     queryKey: ['clients', 1, 500],
@@ -139,7 +162,7 @@ export default function ProjectsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       setEditDialog(null);
-      setEditDocumentFile(null);
+      setEditDocumentFiles([]);
       setEditError(null);
     },
   });
@@ -164,14 +187,23 @@ export default function ProjectsPage() {
   const handleDownloadTemplate = async () => {
     try {
       const res = await projectsApi.downloadTemplate();
-      const url = URL.createObjectURL(res.data as Blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'projects_template.xlsx';
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadBlob(res.data, 'projects_template.xlsx');
     } catch {
       setBulkError('Failed to download template');
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      const res = await projectsApi.export({
+        status: filterStatus || undefined,
+        clientId: filterClientId || undefined,
+        fromDate: filterFromDate || undefined,
+        toDate: filterToDate || undefined,
+      });
+      downloadBlob(res.data, 'projects_export.xlsx');
+    } catch {
+      setBulkError('Failed to export projects');
     }
   };
 
@@ -180,7 +212,7 @@ export default function ProjectsPage() {
     setDescription('');
     setStartDate('');
     setEndDate('');
-    setDocumentFile(null);
+    setDocumentFiles([]);
     setClientId('');
     setAssigneeIds([]);
     setStatus('PENDING');
@@ -197,7 +229,7 @@ export default function ProjectsPage() {
     setEditClientId(p.clientId ?? '');
     setEditStatus(p.status);
     setEditAssigneeIds(p.assignees?.map((a) => a.employee.id) ?? []);
-    setEditDocumentFile(null);
+    setEditDocumentFiles([]);
     setEditError(null);
   };
 
@@ -208,10 +240,10 @@ export default function ProjectsPage() {
       return;
     }
     let documentUrl: string | undefined;
-    if (editDocumentFile) {
+    if (editDocumentFiles.length) {
       try {
-        const res = await uploadApi.upload(editDocumentFile, { scope: 'media' });
-        documentUrl = res.data.file_url;
+        const res = await uploadApi.uploadMultiple(editDocumentFiles, { scope: 'media' });
+        documentUrl = joinProjectDocumentUrls(res.data.files.map((file) => file.file_url));
       } catch {
         setEditError('File upload failed');
         return;
@@ -224,10 +256,10 @@ export default function ProjectsPage() {
     e.preventDefault();
     setFormError(null);
     let documentUrl: string | undefined;
-    if (documentFile) {
+    if (documentFiles.length) {
       try {
-        const res = await uploadApi.upload(documentFile, { scope: 'media' });
-        documentUrl = res.data.file_url;
+        const res = await uploadApi.uploadMultiple(documentFiles, { scope: 'media' });
+        documentUrl = joinProjectDocumentUrls(res.data.files.map((file) => file.file_url));
       } catch {
         setFormError('File upload failed');
         return;
@@ -244,8 +276,10 @@ export default function ProjectsPage() {
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 3 }}>
         <Typography variant="h4" fontWeight={700}>Project Management</Typography>
-        {canMutate && (
-          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+          {canMutate && (
+            <>
+            <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExport}>Export Excel</Button>
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownloadTemplate}>Download template</Button>
             <Button component="label" variant="outlined" startIcon={<UploadFileIcon />}>
               Excel upload
@@ -275,10 +309,54 @@ export default function ProjectsPage() {
             <Button variant="contained" startIcon={showForm ? <ExpandLessIcon /> : <AddIcon />} onClick={() => setShowForm((v) => !v)}>
               {showForm ? 'Hide form' : 'Create project'}
             </Button>
-          </Box>
-        )}
+            </>
+          )}
+        </Box>
       </Box>
       {bulkError && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setBulkError(null)}>{bulkError}</Alert>}
+      <Paper sx={{ mb: 2, p: 2, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel>Status</InputLabel>
+          <Select value={filterStatus} label="Status" onChange={(e) => { setFilterStatus(e.target.value); setPage(0); }}>
+            <MenuItem value="">All</MenuItem>
+            {STATUS_OPTIONS.map((o) => (
+              <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        {canMutate && (
+          <FormControl size="small" sx={{ minWidth: 220 }}>
+            <InputLabel>Client</InputLabel>
+            <Select value={filterClientId} label="Client" onChange={(e) => { setFilterClientId(e.target.value); setPage(0); }}>
+              <MenuItem value="">All</MenuItem>
+              {clients.map((c) => (
+                <MenuItem key={c.id} value={c.id}>{c.name}{c.company ? ` (${c.company})` : ''}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+        <TextField
+          size="small"
+          label="From date"
+          type="date"
+          value={filterFromDate}
+          onChange={(e) => { setFilterFromDate(e.target.value); setPage(0); }}
+          InputLabelProps={{ shrink: true }}
+          sx={{ minWidth: 160 }}
+        />
+        <TextField
+          size="small"
+          label="To date"
+          type="date"
+          value={filterToDate}
+          onChange={(e) => { setFilterToDate(e.target.value); setPage(0); }}
+          InputLabelProps={{ shrink: true }}
+          sx={{ minWidth: 160 }}
+        />
+        <Button onClick={() => { setFilterStatus(''); setFilterClientId(''); setFilterFromDate(''); setFilterToDate(''); setPage(0); }}>
+          Clear filters
+        </Button>
+      </Paper>
 
       <Collapse in={canMutate && showForm}>
         <Paper sx={{ p: 3, mb: 3, borderRadius: 2 }}>
@@ -310,30 +388,36 @@ export default function ProjectsPage() {
             />
             <Box>
               <Typography variant="body2" color="text.secondary" gutterBottom>
-                File / Document (optional) — PDF, Office, images, video, audio, ZIP
+                Files / Documents (optional) — PDF, Office, images, video, audio, ZIP
               </Typography>
               <Button component="label" variant="outlined" size="small" startIcon={<UploadFileIcon />}>
-                {documentFile ? documentFile.name : 'Choose file'}
+                {documentFiles.length ? `${documentFiles.length} file(s) selected` : 'Choose files'}
                 <input
                   type="file"
                   accept={ACCEPT_FULL_MEDIA}
+                  multiple
                   hidden
                   onChange={(e) => {
-                    const f = e.target.files?.[0] || null;
-                    if (f) {
-                      const err = validateFilesFullMedia([f]);
+                    const files = Array.from(e.target.files || []);
+                    if (files.length) {
+                      const err = validateFilesFullMedia(files);
                       if (err) {
                         setFormError(err);
                         e.target.value = '';
-                        setDocumentFile(null);
+                        setDocumentFiles([]);
                         return;
                       }
                     }
                     setFormError(null);
-                    setDocumentFile(f);
+                    setDocumentFiles(files);
                   }}
                 />
               </Button>
+              {!!documentFiles.length && (
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+                  {documentFiles.map((file) => file.name).join(', ')}
+                </Typography>
+              )}
             </Box>
             <FormControl fullWidth>
               <InputLabel>Status</InputLabel>
@@ -392,34 +476,44 @@ export default function ProjectsPage() {
             disableCloseOnSelect
           />
           <Box>
-            <Typography variant="body2" color="text.secondary" gutterBottom>Document</Typography>
-            {editDialog?.documentUrl && !editDocumentFile && (
-              <Button size="small" href={editDialog.documentUrl} target="_blank" rel="noopener noreferrer" sx={{ mr: 2, mb: 1 }}>
-                Current file
-              </Button>
+            <Typography variant="body2" color="text.secondary" gutterBottom>Documents</Typography>
+            {!editDocumentFiles.length && parseProjectDocumentUrls(editDialog?.documentUrl).length > 0 && (
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+                {parseProjectDocumentUrls(editDialog?.documentUrl).map((url, index) => (
+                  <Button key={url} size="small" href={url} target="_blank" rel="noopener noreferrer">
+                    {`Current file ${index + 1}`}
+                  </Button>
+                ))}
+              </Box>
             )}
             <Button component="label" variant="outlined" size="small" startIcon={<UploadFileIcon />}>
-              {editDocumentFile ? editDocumentFile.name : 'Replace document'}
+              {editDocumentFiles.length ? `Replace with ${editDocumentFiles.length} file(s)` : 'Replace documents'}
               <input
                 type="file"
                 accept={ACCEPT_FULL_MEDIA}
+                multiple
                 hidden
                 onChange={(e) => {
-                  const f = e.target.files?.[0] || null;
-                  if (f) {
-                    const err = validateFilesFullMedia([f]);
+                  const files = Array.from(e.target.files || []);
+                  if (files.length) {
+                    const err = validateFilesFullMedia(files);
                     if (err) {
                       setEditError(err);
                       e.target.value = '';
-                      setEditDocumentFile(null);
+                      setEditDocumentFiles([]);
                       return;
                     }
                   }
                   setEditError(null);
-                  setEditDocumentFile(f);
+                  setEditDocumentFiles(files);
                 }}
               />
             </Button>
+            {!!editDocumentFiles.length && (
+              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+                {editDocumentFiles.map((file) => file.name).join(', ')}
+              </Typography>
+            )}
           </Box>
           {(editError || updateProjectMutation.isError) && (
             <Alert severity="error">{editError || getBackendErrorMessage(updateProjectMutation.error)}</Alert>
@@ -444,13 +538,13 @@ export default function ProjectsPage() {
               <TableCell sx={{ fontWeight: 600 }}>Team</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Status</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Document</TableCell>
-              <TableCell sx={{ fontWeight: 600 }} align="right">Actions</TableCell>
+              {canMutate && <TableCell sx={{ fontWeight: 600 }} align="right">Actions</TableCell>}
             </TableRow>
           </TableHead>
           <TableBody>
             {isLoading
               ? Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={i}><TableCell colSpan={8}><Skeleton height={56} /></TableCell></TableRow>
+                  <TableRow key={i}><TableCell colSpan={canMutate ? 8 : 7}><Skeleton height={56} /></TableCell></TableRow>
                 ))
               : projects.map((p) => (
                   <TableRow key={p.id} hover>
@@ -488,20 +582,29 @@ export default function ProjectsPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      {p.documentUrl ? (
-                        <Button size="small" href={p.documentUrl} target="_blank" rel="noopener noreferrer">View</Button>
+                      {parseProjectDocumentUrls(p.documentUrl).length ? (
+                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                          {parseProjectDocumentUrls(p.documentUrl).slice(0, 2).map((url, index) => (
+                            <Button key={url} size="small" href={url} target="_blank" rel="noopener noreferrer">
+                              {`View ${index + 1}`}
+                            </Button>
+                          ))}
+                          {parseProjectDocumentUrls(p.documentUrl).length > 2 && (
+                            <Chip label={`+${parseProjectDocumentUrls(p.documentUrl).length - 2} more`} size="small" />
+                          )}
+                        </Box>
                       ) : '—'}
                     </TableCell>
-                    <TableCell align="right">
-                      {canMutate && (
+                    {canMutate && (
+                      <TableCell align="right">
                         <Box sx={{ display: 'inline-flex', gap: 0.5 }}>
                           <IconButton size="small" color="primary" onClick={() => openEditDialog(p)} title="Edit project">
                             <EditIcon />
                           </IconButton>
                           <IconButton size="small" color="error" onClick={() => window.confirm('Delete this project?') && deleteMutation.mutate(p.id)}><DeleteIcon /></IconButton>
                         </Box>
-                      )}
-                    </TableCell>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
           </TableBody>

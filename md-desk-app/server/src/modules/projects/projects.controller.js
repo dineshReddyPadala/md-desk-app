@@ -1,6 +1,7 @@
 const projectsService = require('./projects.service');
 const XLSX = require('xlsx');
 const { assertBufferSize } = require('../../utils/uploadLimits');
+const { sendWorkbook } = require('../../utils/excel');
 
 async function list(req, reply) {
   const result = await projectsService.list(req.server.prisma, req.query || {}, req.user);
@@ -37,6 +38,26 @@ async function remove(req, reply) {
   if (!existing) return reply.status(404).send({ success: false, message: 'Project not found' });
   await projectsService.remove(req.server.prisma, req.params.id);
   return reply.send({ success: true });
+}
+
+async function exportList(req, reply) {
+  const items = await projectsService.listAll(req.server.prisma, req.query || {}, req.user);
+  return sendWorkbook(reply, 'projects_export.xlsx', [{
+    name: 'Projects',
+    rows: items.map((item) => ({
+      Name: item.name,
+      Description: item.description || '',
+      Status: item.status,
+      Client: item.client?.name || '',
+      ClientEmail: item.client?.email || '',
+      StartDate: item.startDate ? item.startDate.toISOString() : '',
+      EndDate: item.endDate ? item.endDate.toISOString() : '',
+      Team: item.assignees?.map((assignee) => assignee.employee.name).join(', ') || '',
+      DocumentUrl: item.documentUrl || '',
+      CreatedAt: item.createdAt.toISOString(),
+      UpdatedAt: item.updatedAt.toISOString(),
+    })),
+  }]);
 }
 
 async function bulkUpload(req, reply) {
@@ -80,4 +101,4 @@ function template(req, reply) {
   return reply.send(buf);
 }
 
-module.exports = { list, getById, create, update, updateStatus, remove, bulkUpload, template };
+module.exports = { list, getById, create, update, updateStatus, remove, bulkUpload, template, exportList };

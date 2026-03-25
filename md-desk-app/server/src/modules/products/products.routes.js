@@ -3,7 +3,7 @@ const { createProductSchema, updateProductSchema, productIdParam } = require('./
 
 async function productsRoutes(fastify) {
   fastify.get('/', {
-    schema: { tags: ['products'], summary: 'List products (public)' },
+    schema: { tags: ['products'], summary: 'List products (public)', querystring: { type: 'object', properties: { search: { type: 'string' } } } },
   }, productsController.list);
   fastify.get('/:id', {
     schema: { tags: ['products'], summary: 'Get product by id (public)', params: productIdParam.params },

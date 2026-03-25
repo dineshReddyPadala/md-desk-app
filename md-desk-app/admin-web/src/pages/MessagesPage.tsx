@@ -18,21 +18,36 @@ import {
   Typography,
   Chip,
   Skeleton,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import ReplyIcon from '@mui/icons-material/Reply';
 import EmailIcon from '@mui/icons-material/Email';
+import DownloadIcon from '@mui/icons-material/Download';
 import { messagesApi } from '../api/endpoints';
+import { downloadBlob } from '../utils/downloadBlob';
 
 export default function MessagesPage() {
   const [page, setPage] = useState(0);
   const [limit, setLimit] = useState(10);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
+  const [replyStatus, setReplyStatus] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-messages', page, limit],
-    queryFn: async () => (await messagesApi.list({ page: page + 1, limit })).data,
+    queryKey: ['admin-messages', page, limit, replyStatus, fromDate, toDate],
+    queryFn: async () => (await messagesApi.list({
+      page: page + 1,
+      limit,
+      replyStatus: replyStatus || undefined,
+      fromDate: fromDate || undefined,
+      toDate: toDate || undefined,
+    })).data,
   });
 
   const { data: detail } = useQuery({
@@ -70,10 +85,55 @@ export default function MessagesPage() {
       }
     | undefined;
 
+  const handleExport = async () => {
+    const res = await messagesApi.export({
+      replyStatus: replyStatus || undefined,
+      fromDate: fromDate || undefined,
+      toDate: toDate || undefined,
+    });
+    downloadBlob(res.data, 'messages_export.xlsx');
+  };
+
   return (
     <Box>
-      <Typography variant="h4" fontWeight={700} gutterBottom>Customer Messages</Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, mb: 1, flexWrap: 'wrap' }}>
+        <Typography variant="h4" fontWeight={700} gutterBottom>Customer Messages</Typography>
+        <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => void handleExport()}>
+          Export Excel
+        </Button>
+      </Box>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>View and reply to customer suggestions and feedback</Typography>
+      <Paper sx={{ mb: 2, p: 2, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+        <FormControl size="small" sx={{ minWidth: 160 }}>
+          <InputLabel>Reply status</InputLabel>
+          <Select value={replyStatus} label="Reply status" onChange={(e) => { setReplyStatus(e.target.value); setPage(0); }}>
+            <MenuItem value="">All</MenuItem>
+            <MenuItem value="PENDING">Pending</MenuItem>
+            <MenuItem value="REPLIED">Replied</MenuItem>
+          </Select>
+        </FormControl>
+        <TextField
+          size="small"
+          label="From date"
+          type="date"
+          value={fromDate}
+          onChange={(e) => { setFromDate(e.target.value); setPage(0); }}
+          InputLabelProps={{ shrink: true }}
+          sx={{ minWidth: 160 }}
+        />
+        <TextField
+          size="small"
+          label="To date"
+          type="date"
+          value={toDate}
+          onChange={(e) => { setToDate(e.target.value); setPage(0); }}
+          InputLabelProps={{ shrink: true }}
+          sx={{ minWidth: 160 }}
+        />
+        <Button onClick={() => { setReplyStatus(''); setFromDate(''); setToDate(''); setPage(0); }}>
+          Clear filters
+        </Button>
+      </Paper>
       <TableContainer component={Paper}>
         <Table>
           <TableHead>

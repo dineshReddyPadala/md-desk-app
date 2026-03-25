@@ -25,10 +25,12 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ImageIcon from '@mui/icons-material/Image';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DownloadIcon from '@mui/icons-material/Download';
+import SearchIcon from '@mui/icons-material/Search';
 import { dealersApi, uploadApi, type DealerDto } from '../api/endpoints';
 import { getBackendErrorMessage } from '../api/getBackendErrorMessage';
 import { useStaffRole } from '../hooks/useStaffRole';
 import { ACCEPT_IMAGES_ONLY, validateFilesImageOnly, validateFilesMaxSize } from '../constants/uploadAccept';
+import { downloadBlob } from '../utils/downloadBlob';
 
 export default function DealersPage() {
   const { canMutate } = useStaffRole();
@@ -42,11 +44,13 @@ export default function DealersPage() {
   const [imageFileError, setImageFileError] = useState<string | null>(null);
   const [bulkFile, setBulkFile] = useState<File | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [cityFilter, setCityFilter] = useState('');
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['dealers'],
-    queryFn: async () => (await dealersApi.list()).data,
+    queryKey: ['dealers', search, cityFilter],
+    queryFn: async () => (await dealersApi.list({ search: search || undefined, city: cityFilter || undefined })).data,
   });
   const dealers = (data?.dealers || []) as DealerDto[];
 
@@ -87,14 +91,18 @@ export default function DealersPage() {
   const handleDownloadTemplate = async () => {
     try {
       const res = await dealersApi.downloadTemplate();
-      const url = URL.createObjectURL(res.data as Blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'dealers_template.xlsx';
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadBlob(res.data, 'dealers_template.xlsx');
     } catch {
       setBulkError('Failed to download template');
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      const res = await dealersApi.export({ search: search || undefined, city: cityFilter || undefined });
+      downloadBlob(res.data, 'dealers_export.xlsx');
+    } catch {
+      setBulkError('Failed to export dealers');
     }
   };
 
@@ -168,6 +176,7 @@ export default function DealersPage() {
         <Typography variant="h4" fontWeight={700}>Dealers</Typography>
         {canMutate && (
           <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExport}>Export Excel</Button>
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownloadTemplate}>Download template</Button>
             <Button component="label" variant="outlined" startIcon={<UploadFileIcon />}>
               Bulk upload (Excel)
@@ -199,6 +208,26 @@ export default function DealersPage() {
         )}
       </Box>
       {bulkError && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setBulkError(null)}>{bulkError}</Alert>}
+      <Paper sx={{ mb: 2, p: 2, display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+        <TextField
+          size="small"
+          placeholder="Search by name, city, phone..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          sx={{ minWidth: 240 }}
+          InputProps={{ startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} /> }}
+        />
+        <TextField
+          size="small"
+          label="City"
+          value={cityFilter}
+          onChange={(e) => setCityFilter(e.target.value)}
+          sx={{ minWidth: 180 }}
+        />
+        <Button onClick={() => { setSearch(''); setCityFilter(''); }}>
+          Clear filters
+        </Button>
+      </Paper>
       <TableContainer component={Paper}>
         <Table>
           <TableHead>

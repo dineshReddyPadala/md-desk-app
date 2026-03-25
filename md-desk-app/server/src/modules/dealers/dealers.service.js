@@ -1,5 +1,16 @@
-async function list(prisma, city = null) {
-  const where = city ? { city: { contains: city, mode: 'insensitive' } } : {};
+async function list(prisma, filters = null) {
+  const city = typeof filters === 'string' ? filters : filters?.city;
+  const search = typeof filters === 'string' ? '' : filters?.search;
+  const where = {};
+  if (city) where.city = { contains: city, mode: 'insensitive' };
+  if (search && String(search).trim()) {
+    const term = String(search).trim();
+    where.OR = [
+      { name: { contains: term, mode: 'insensitive' } },
+      { city: { contains: term, mode: 'insensitive' } },
+      { phone: { contains: term, mode: 'insensitive' } },
+    ];
+  }
   return prisma.dealer.findMany({ where, orderBy: { name: 'asc' } });
 }
 

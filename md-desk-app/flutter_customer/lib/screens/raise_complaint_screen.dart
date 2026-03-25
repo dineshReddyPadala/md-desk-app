@@ -64,7 +64,10 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadActiveProjects());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _prefillUserDetails();
+      await _loadActiveProjects();
+    });
   }
 
   @override
@@ -95,6 +98,21 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
     } catch (_) {
       if (mounted) setState(() => _loadingProjects = false);
     }
+  }
+
+  Future<void> _prefillUserDetails() async {
+    final auth = context.read<AuthProvider>();
+    if (auth.user == null) {
+      await auth.loadUser();
+    }
+    final user = auth.user;
+    if (user == null || !mounted) return;
+    _nameController.text =
+        _nameController.text.trim().isEmpty ? (user['name'] as String? ?? '') : _nameController.text;
+    _phoneController.text =
+        _phoneController.text.trim().isEmpty ? (user['phone'] as String? ?? '') : _phoneController.text;
+    _cityController.text =
+        _cityController.text.trim().isEmpty ? (user['city'] as String? ?? '') : _cityController.text;
   }
 
   Future<void> _pickFiles() async {

@@ -25,8 +25,12 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import DownloadIcon from '@mui/icons-material/Download';
 import { employeesApi, type EmployeeDto } from '../api/endpoints';
 import { getBackendErrorMessage } from '../api/getBackendErrorMessage';
+import { validateFilesMaxSize } from '../constants/uploadAccept';
+import { downloadBlob } from '../utils/downloadBlob';
 
 export default function EmployeesPage() {
   const [open, setOpen] = useState(false);
@@ -36,14 +40,24 @@ export default function EmployeesPage() {
   const [mobile, setMobile] = useState('');
   const [designation, setDesignation] = useState('');
   const [search, setSearch] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [bulkFile, setBulkFile] = useState<File | null>(null);
+  const [bulkError, setBulkError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['employees', page + 1, rowsPerPage, search],
+    queryKey: ['employees', page + 1, rowsPerPage, search, fromDate, toDate],
     queryFn: async () =>
-      (await employeesApi.list({ page: page + 1, limit: rowsPerPage, search: search || undefined })).data,
+      (await employeesApi.list({
+        page: page + 1,
+        limit: rowsPerPage,
+        search: search || undefined,
+        fromDate: fromDate || undefined,
+        toDate: toDate || undefined,
+      })).data,
   });
   const items = (data?.items || []) as EmployeeDto[];
   const total = data?.total ?? 0;
@@ -79,6 +93,19 @@ export default function EmployeesPage() {
   const deleteMutation = useMutation({
     mutationFn: (id: string) => employeesApi.delete(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['employees'] }),
+  });
+  const bulkUploadMutation = useMutation({
+    mutationFn: (file: File) => employeesApi.bulkUpload(file),
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      setBulkFile(null);
+      setBulkError(null);
+      const msg = res.data.errors?.length
+        ? `Created ${res.data.created}. Some rows had errors: ${res.data.errors.map((e: { row: number; message: string }) => `Row ${e.row}: ${e.message}`).join('; ')}`
+        : `Created ${res.data.created} employee(s).`;
+      alert(msg);
+    },
+    onError: (err: unknown) => setBulkError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Bulk upload failed'),
   });
 
   const resetAndClose = () => {
@@ -116,22 +143,87 @@ export default function EmployeesPage() {
   const error = createMutation.error || updateMutation.error;
   const errorMessage = error ? getBackendErrorMessage(error) : '';
 
+  const handleDownloadTemplate = async () => {
+    try {
+      const res = await employeesApi.downloadTemplate();
+      downloadBlob(res.data, 'employees_template.xlsx');
+    } catch {
+      setBulkError('Failed to download template');
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      const res = await employeesApi.export({
+        search: search || undefined,
+        fromDate: fromDate || undefined,
+        toDate: toDate || undefined,
+      });
+      downloadBlob(res.data, 'employees_export.xlsx');
+    } catch {
+      setBulkError('Failed to export employees');
+    }
+  };
+
   return (
     <Box>
-      <Typography variant="h4" fontWeight={700} gutterBottom>
-        Employee Management
-      </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-        Add and manage employees. An email is sent when a new employee is added.
-      </Typography>
-
-      <Paper sx={{ mb: 2, p: 2, display: 'flex', gap: 2, alignItems: 'center' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 3 }}>
+        <Box>
+          <Typography variant="h4" fontWeight={700} gutterBottom>
+            Employee Management
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            Add and manage employees. An email is sent when a new employee is added.
+          </Typography>
+        </Box>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+          <Button variant="text" onClick={() => { setSearch(''); setFromDate(''); setToDate(''); setPage(0); }}>
+            Clear filters
+          </Button>
+          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleExport}>
+            Export Excel
+          </Button>
+          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownloadTemplate}>
+            Download template
+          </Button>
+          <Button component="label" variant="outlined" startIcon={<UploadFileIcon />}>
+            Excel upload
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                const sz = validateFilesMaxSize([f]);
+                if (sz) {
+                  setBulkError(sz);
+                  e.target.value = '';
+                  return;
+                }
+                setBulkError(null);
+                setBulkFile(f);
+              }}
+            />
+          </Button>
+          {bulkFile && (
+            <Button variant="contained" onClick={() => bulkUploadMutation.mutate(bulkFile)} disabled={bulkUploadMutation.isPending}>
+              Upload {bulkFile.name}
+            </Button>
+          )}
+          <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenAdd}>
+            Add employee
+          </Button>
+        </Box>
+      </Box>
+      {bulkError && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setBulkError(null)}>{bulkError}</Alert>}
+      <Paper sx={{ mb: 2, p: 2, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
         <TextField
           size="small"
-          placeholder="Search by name, email, mobile, designation…"
+          placeholder="Search by name, email, mobile, designation..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-          sx={{ minWidth: 280 }}
+          sx={{ minWidth: 280, flex: '1 1 280px' }}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
@@ -140,9 +232,24 @@ export default function EmployeesPage() {
             ),
           }}
         />
-        <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenAdd}>
-          Add employee
-        </Button>
+        <TextField
+          size="small"
+          label="From date"
+          type="date"
+          value={fromDate}
+          onChange={(e) => { setFromDate(e.target.value); setPage(0); }}
+          InputLabelProps={{ shrink: true }}
+          sx={{ minWidth: 160 }}
+        />
+        <TextField
+          size="small"
+          label="To date"
+          type="date"
+          value={toDate}
+          onChange={(e) => { setToDate(e.target.value); setPage(0); }}
+          InputLabelProps={{ shrink: true }}
+          sx={{ minWidth: 160 }}
+        />
       </Paper>
 
       <TableContainer component={Paper}>

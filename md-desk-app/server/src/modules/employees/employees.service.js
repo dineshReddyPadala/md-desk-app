@@ -23,9 +23,71 @@ function toEmployeeShape(user) {
   };
 }
 
+function normalizeEmployeeInput(data = {}) {
+  return {
+    name: data.name != null ? String(data.name).trim() : '',
+    email: data.email != null ? String(data.email).trim().toLowerCase() : '',
+    mobile: data.mobile != null ? String(data.mobile).trim() : '',
+    designation: data.designation != null ? String(data.designation).trim() : '',
+  };
+}
+
+function validateEmployeeInput(input) {
+  if (!input.name) {
+    const err = new Error('Name is required');
+    err.statusCode = 400;
+    throw err;
+  }
+  if (!input.email) {
+    const err = new Error('Email is required');
+    err.statusCode = 400;
+    throw err;
+  }
+  if (!input.mobile) {
+    const err = new Error('Mobile is required');
+    err.statusCode = 400;
+    throw err;
+  }
+}
+
+async function createEmployeeRecord(prisma, rawData) {
+  const data = normalizeEmployeeInput(rawData);
+  validateEmployeeInput(data);
+  const existing = await prisma.user.findUnique({ where: { email: data.email } });
+  if (existing) {
+    const err = new Error('A user with this email already exists');
+    err.statusCode = 400;
+    throw err;
+  }
+  const plainPassword = generateRandomPassword();
+  const hashed = await hashPassword(plainPassword);
+  const user = await prisma.user.create({
+    data: {
+      name: data.name,
+      email: data.email,
+      phone: data.mobile,
+      password: hashed,
+      role: 'EMPLOYEE',
+      designation: data.designation || null,
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phone: true,
+      designation: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+  return { user: toEmployeeShape(user), temporaryPassword: plainPassword };
+}
+
 async function list(prisma, page = 1, limit = 20, search = '') {
-  const take = Math.min(Math.max(1, parseInt(limit, 10) || 20), 100);
-  const skip = (Math.max(1, parseInt(page, 10) || 1) - 1) * take;
+  return listWithFilters(prisma, { page, limit, search });
+}
+
+function buildEmployeeWhere(search = '', designation = '', fromDate = '', toDate = '') {
   const where = { role: 'EMPLOYEE' };
   if (search && String(search).trim()) {
     const term = String(search).trim();
@@ -36,6 +98,27 @@ async function list(prisma, page = 1, limit = 20, search = '') {
       { designation: { contains: term, mode: 'insensitive' } },
     ];
   }
+  if (designation && String(designation).trim()) {
+    where.designation = { contains: String(designation).trim(), mode: 'insensitive' };
+  }
+  const createdAt = {};
+  if (fromDate) {
+    const parsed = new Date(`${String(fromDate).trim()}T00:00:00.000Z`);
+    if (!Number.isNaN(parsed.getTime())) createdAt.gte = parsed;
+  }
+  if (toDate) {
+    const parsed = new Date(`${String(toDate).trim()}T23:59:59.999Z`);
+    if (!Number.isNaN(parsed.getTime())) createdAt.lte = parsed;
+  }
+  if (Object.keys(createdAt).length) where.createdAt = createdAt;
+  return where;
+}
+
+async function listWithFilters(prisma, options = {}) {
+  const { page = 1, limit = 20, search = '', designation = '', fromDate = '', toDate = '' } = options;
+  const take = Math.min(Math.max(1, parseInt(limit, 10) || 20), 100);
+  const skip = (Math.max(1, parseInt(page, 10) || 1) - 1) * take;
+  const where = buildEmployeeWhere(search, designation, fromDate, toDate);
   const [users, total] = await Promise.all([
     prisma.user.findMany({
       where,
@@ -58,25 +141,11 @@ async function list(prisma, page = 1, limit = 20, search = '') {
   return { items, total, page: Math.floor(skip / take) + 1, limit: take, totalPages: Math.ceil(total / take) };
 }
 
-async function create(prisma, data) {
-  const email = data.email.trim().toLowerCase();
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
-    const err = new Error('A user with this email already exists');
-    err.statusCode = 400;
-    throw err;
-  }
-  const plainPassword = generateRandomPassword();
-  const hashed = await hashPassword(plainPassword);
-  const user = await prisma.user.create({
-    data: {
-      name: data.name.trim(),
-      email,
-      phone: data.mobile.trim(),
-      password: hashed,
-      role: 'EMPLOYEE',
-      designation: data.designation ? data.designation.trim() : null,
-    },
+async function listAll(prisma, search = '') {
+  const where = buildEmployeeWhere(search);
+  const users = await prisma.user.findMany({
+    where,
+    orderBy: { name: 'asc' },
     select: {
       id: true,
       name: true,
@@ -87,7 +156,30 @@ async function create(prisma, data) {
       updatedAt: true,
     },
   });
-  return { user: toEmployeeShape(user), temporaryPassword: plainPassword };
+  return users.map(toEmployeeShape);
+}
+
+async function listAllWithFilters(prisma, options = {}) {
+  const { search = '', designation = '', fromDate = '', toDate = '' } = options;
+  const where = buildEmployeeWhere(search, designation, fromDate, toDate);
+  const users = await prisma.user.findMany({
+    where,
+    orderBy: { name: 'asc' },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      phone: true,
+      designation: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+  return users.map(toEmployeeShape);
+}
+
+async function create(prisma, data) {
+  return createEmployeeRecord(prisma, data);
 }
 
 async function getById(prisma, id) {
@@ -113,8 +205,14 @@ async function getById(prisma, id) {
 
 async function update(prisma, id, data) {
   await getById(prisma, id);
+  const normalized = normalizeEmployeeInput({
+    name: data.name,
+    email: data.email,
+    mobile: data.mobile,
+    designation: data.designation,
+  });
   if (data.email) {
-    const email = data.email.trim().toLowerCase();
+    const email = normalized.email;
     const conflict = await prisma.user.findFirst({
       where: { email, NOT: { id } },
     });
@@ -127,10 +225,10 @@ async function update(prisma, id, data) {
   const user = await prisma.user.update({
     where: { id },
     data: {
-      ...(data.name != null && { name: data.name.trim() }),
-      ...(data.email != null && { email: data.email.trim().toLowerCase() }),
-      ...(data.mobile != null && { phone: data.mobile.trim() }),
-      ...(data.designation !== undefined && { designation: data.designation ? data.designation.trim() : null }),
+      ...(data.name != null && { name: normalized.name }),
+      ...(data.email != null && { email: normalized.email }),
+      ...(data.mobile != null && { phone: normalized.mobile }),
+      ...(data.designation !== undefined && { designation: normalized.designation || null }),
     },
     select: {
       id: true,
@@ -150,4 +248,17 @@ async function remove(prisma, id) {
   await prisma.user.delete({ where: { id } });
 }
 
-module.exports = { list, create, getById, update, remove };
+async function bulkCreateFromRows(prisma, rows) {
+  const created = [];
+  const errors = [];
+  for (let i = 0; i < rows.length; i += 1) {
+    try {
+      created.push(await createEmployeeRecord(prisma, rows[i]));
+    } catch (err) {
+      errors.push({ row: i + 1, message: err.message || 'Failed to create employee' });
+    }
+  }
+  return { created, errors };
+}
+
+module.exports = { list, listWithFilters, listAll, listAllWithFilters, create, getById, update, remove, bulkCreateFromRows };

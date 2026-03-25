@@ -1,6 +1,7 @@
 const messagesService = require('./messages.service');
 const notificationsService = require('../notifications/notifications.service');
 const { getIo } = require('../../socket');
+const { sendWorkbook } = require('../../utils/excel');
 
 async function create(req, reply) {
   const { subject, message } = req.body;
@@ -31,13 +32,30 @@ async function myList(req, reply) {
 }
 
 async function adminList(req, reply) {
-  const { page = 1, limit = 20 } = req.query || {};
+  const { page = 1, limit = 20, replyStatus = '', fromDate = '', toDate = '' } = req.query || {};
   const result = await messagesService.listAdmin(
     req.server.prisma,
     Number(page),
-    Number(limit)
+    Number(limit),
+    { replyStatus, fromDate, toDate }
   );
   return reply.send({ success: true, ...result });
+}
+
+async function exportAdmin(req, reply) {
+  const items = await messagesService.listAllAdmin(req.server.prisma, req.query || {});
+  return sendWorkbook(reply, 'messages_export.xlsx', [{
+    name: 'Messages',
+    rows: items.map((item) => ({
+      Subject: item.subject,
+      Message: item.message,
+      CustomerName: item.user?.name || '',
+      CustomerEmail: item.user?.email || '',
+      AdminReply: item.adminReply || '',
+      RepliedAt: item.repliedAt ? item.repliedAt.toISOString() : '',
+      CreatedAt: item.createdAt.toISOString(),
+    })),
+  }]);
 }
 
 async function getById(req, reply) {
@@ -70,4 +88,4 @@ async function reply(req, reply) {
   return reply.send({ success: true, message: msg });
 }
 
-module.exports = { create, myList, adminList, getById, reply };
+module.exports = { create, myList, adminList, exportAdmin, getById, reply };

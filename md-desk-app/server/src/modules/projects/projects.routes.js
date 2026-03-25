@@ -14,7 +14,7 @@ async function projectsAdminRoutes(fastify) {
     schema: {
       ...schema,
       summary: 'List projects (admin)',
-      querystring: { type: 'object', properties: { status: { type: 'string' }, clientId: { type: 'string' }, page: { type: 'integer' }, limit: { type: 'integer' } } },
+      querystring: { type: 'object', properties: { status: { type: 'string' }, clientId: { type: 'string' }, fromDate: { type: 'string' }, toDate: { type: 'string' }, page: { type: 'integer' }, limit: { type: 'integer' } } },
     },
   }, projectsController.list);
 
@@ -22,6 +22,15 @@ async function projectsAdminRoutes(fastify) {
     preHandler: admin,
     schema: { ...schema, summary: 'Download projects Excel template' },
   }, projectsController.template);
+
+  fastify.get('/export', {
+    preHandler: staff,
+    schema: {
+      ...schema,
+      summary: 'Export projects Excel',
+      querystring: { type: 'object', properties: { status: { type: 'string' }, clientId: { type: 'string' }, fromDate: { type: 'string' }, toDate: { type: 'string' } } },
+    },
+  }, projectsController.exportList);
 
   fastify.post('/bulk-upload', {
     preHandler: admin,

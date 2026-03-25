@@ -11,6 +11,21 @@ async function employeeRoutes(fastify) {
     schema: { ...schemaTag, summary: 'List employees', querystring: listQuerySchema.querystring },
   }, employeesController.list);
 
+  fastify.get('/template', {
+    preHandler: admin,
+    schema: { ...schemaTag, summary: 'Download employees Excel template' },
+  }, employeesController.template);
+
+  fastify.get('/export', {
+    preHandler: admin,
+    schema: { ...schemaTag, summary: 'Export employees Excel', querystring: listQuerySchema.querystring },
+  }, employeesController.exportList);
+
+  fastify.post('/bulk-upload', {
+    preHandler: admin,
+    schema: { ...schemaTag, summary: 'Bulk upload employees via Excel' },
+  }, employeesController.bulkUpload);
+
   fastify.post('/', {
     preHandler: admin,
     schema: { ...schemaTag, summary: 'Create employee', body: createEmployeeSchema.body },

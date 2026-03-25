@@ -1,7 +1,8 @@
 const productsService = require('./products.service');
+const { sendWorkbook } = require('../../utils/excel');
 
 async function list(req, reply) {
-  const list = await productsService.list(req.server.prisma);
+  const list = await productsService.list(req.server.prisma, req.query?.search || '');
   return reply.send({ success: true, products: list });
 }
 
@@ -33,4 +34,16 @@ async function remove(req, reply) {
   return reply.send({ success: true });
 }
 
-module.exports = { list, getById, create, update, remove };
+async function exportList(req, reply) {
+  const items = await productsService.list(req.server.prisma, req.query?.search || '');
+  return sendWorkbook(reply, 'products_export.xlsx', [{
+    name: 'Products',
+    rows: items.map((item) => ({
+      Name: item.name,
+      Description: item.description || '',
+      ImageUrl: item.imageUrl || '',
+    })),
+  }]);
+}
+
+module.exports = { list, getById, create, update, remove, exportList };

@@ -1,5 +1,13 @@
-async function list(prisma) {
-  return prisma.product.findMany({ orderBy: { name: 'asc' } });
+async function list(prisma, search = '') {
+  const where = {};
+  if (search && String(search).trim()) {
+    const term = String(search).trim();
+    where.OR = [
+      { name: { contains: term, mode: 'insensitive' } },
+      { description: { contains: term, mode: 'insensitive' } },
+    ];
+  }
+  return prisma.product.findMany({ where, orderBy: { name: 'asc' } });
 }
 
 async function getById(prisma, id) {

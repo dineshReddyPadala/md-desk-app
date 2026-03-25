@@ -96,4 +96,35 @@ async function sendNewEmployeeEmail(toEmail, employeeName, designation, temporar
   });
 }
 
-module.exports = { sendMail, sendAcknowledgmentEmail, sendStatusUpdateEmail, sendOtpEmail, sendPasswordResetEmail, sendNewClientEmail, sendNewEmployeeEmail };
+async function sendComplaintRaisedStaffEmail(toEmail, options = {}) {
+  const {
+    complaintId,
+    customerName,
+    category,
+    projectName,
+    projectLocation,
+    description,
+  } = options;
+  await sendMail({
+    to: toEmail,
+    subject: `New complaint received - ${complaintId}`,
+    text:
+      `A new complaint has been submitted.\n\n`
+      + `Complaint ID: ${complaintId}\n`
+      + `Customer: ${customerName || 'Customer'}\n`
+      + `Category: ${category || '—'}\n`
+      + `Project: ${projectName || projectLocation || '—'}\n`
+      + `Description: ${description || '—'}\n\n`
+      + 'Please review it in MD Desk.\n\nBest regards,\nMD Desk - Techno Paints',
+    html:
+      `<p>A new complaint has been submitted.</p>`
+      + `<p><strong>Complaint ID:</strong> ${complaintId}<br/>`
+      + `<strong>Customer:</strong> ${customerName || 'Customer'}<br/>`
+      + `<strong>Category:</strong> ${category || '—'}<br/>`
+      + `<strong>Project:</strong> ${projectName || projectLocation || '—'}<br/>`
+      + `<strong>Description:</strong> ${description || '—'}</p>`
+      + `<p>Please review it in MD Desk.</p><p>Best regards,<br/>MD Desk - Techno Paints</p>`,
+  });
+}
+
+module.exports = { sendMail, sendAcknowledgmentEmail, sendStatusUpdateEmail, sendOtpEmail, sendPasswordResetEmail, sendNewClientEmail, sendNewEmployeeEmail, sendComplaintRaisedStaffEmail };

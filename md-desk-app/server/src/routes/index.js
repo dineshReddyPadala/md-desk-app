@@ -30,6 +30,7 @@ async function registerRoutes(fastify) {
     const staff = composePreHandlers(instance.authenticateJWT, instance.authorizeRole(ADMIN_OR_EMPLOYEE));
     const adminComplaintSchema = { tags: ['complaints'], security: [{ bearerAuth: [] }] };
     instance.get('/', { preHandler: staff, schema: { ...adminComplaintSchema, summary: 'List all complaints (admin/employee)', querystring: queryListSchema.querystring } }, complaintsController.adminList);
+    instance.get('/export', { preHandler: staff, schema: { ...adminComplaintSchema, summary: 'Export complaints (admin/employee)', querystring: queryListSchema.querystring } }, complaintsController.exportList);
     instance.get('/high-priority', { preHandler: staff, schema: { ...adminComplaintSchema, summary: 'High priority complaints (admin/employee)', querystring: queryListSchema.querystring } }, complaintsController.highPriority);
     instance.put('/:id/status', { preHandler: staff, schema: { ...adminComplaintSchema, summary: 'Update complaint status & priority (admin/employee)', params: updateStatusSchema.params, body: updateStatusSchema.body } }, complaintsController.updateStatus);
   }, { prefix: '/admin/complaints' });
@@ -52,6 +53,7 @@ async function registerRoutes(fastify) {
   fastify.register(async (instance) => {
     const admin = composePreHandlers(instance.authenticateJWT, instance.authorizeRole('ADMIN'));
     const adminSchema = { tags: ['products'], security: [{ bearerAuth: [] }] };
+    instance.get('/export', { preHandler: admin, schema: { ...adminSchema, summary: 'Export products', querystring: { type: 'object', properties: { search: { type: 'string' } } } } }, productsController.exportList);
     instance.post('/', { preHandler: admin, schema: { ...adminSchema, summary: 'Create product', body: createProductSchema.body } }, productsController.create);
     instance.get('/:id', { preHandler: admin, schema: { ...adminSchema, summary: 'Get product (admin)', params: productIdParam.params } }, productsController.getById);
     instance.put('/:id', { preHandler: admin, schema: { ...adminSchema, summary: 'Update product', params: updateProductSchema.params, body: updateProductSchema.body } }, productsController.update);
@@ -62,6 +64,7 @@ async function registerRoutes(fastify) {
     const admin = composePreHandlers(instance.authenticateJWT, instance.authorizeRole('ADMIN'));
     const adminSchema = { tags: ['dealers'], security: [{ bearerAuth: [] }] };
     instance.get('/template', { preHandler: admin, schema: { ...adminSchema, summary: 'Download dealers Excel template' } }, dealersController.template);
+    instance.get('/export', { preHandler: admin, schema: { ...adminSchema, summary: 'Export dealers', querystring: { type: 'object', properties: { city: { type: 'string' }, search: { type: 'string' } } } } }, dealersController.exportList);
     instance.post('/bulk-upload', { preHandler: admin, schema: { ...adminSchema, summary: 'Bulk upload dealers via Excel' } }, dealersController.bulkUpload);
     instance.post('/', { preHandler: admin, schema: { ...adminSchema, summary: 'Create dealer', body: createDealerSchema.body } }, dealersController.create);
     instance.get('/:id', { preHandler: admin, schema: { ...adminSchema, summary: 'Get dealer (admin)', params: dealerIdParam.params } }, dealersController.getById);

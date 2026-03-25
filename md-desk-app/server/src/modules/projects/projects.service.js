@@ -32,10 +32,20 @@ async function syncAssignees(prisma, projectId, employeeIds) {
 }
 
 async function list(prisma, query = {}, user = null) {
-  const { status, clientId, page = 1, limit = DEFAULT_LIMIT } = query;
+  const { status, clientId, fromDate, toDate, page = 1, limit = DEFAULT_LIMIT } = query;
   const where = {};
   if (status && String(status).trim()) where.status = String(status).trim();
   if (clientId && String(clientId).trim()) where.clientId = String(clientId).trim();
+  const createdAt = {};
+  if (fromDate) {
+    const parsed = new Date(`${String(fromDate).trim()}T00:00:00.000Z`);
+    if (!Number.isNaN(parsed.getTime())) createdAt.gte = parsed;
+  }
+  if (toDate) {
+    const parsed = new Date(`${String(toDate).trim()}T23:59:59.999Z`);
+    if (!Number.isNaN(parsed.getTime())) createdAt.lte = parsed;
+  }
+  if (Object.keys(createdAt).length) where.createdAt = createdAt;
   if (user?.role === 'EMPLOYEE') {
     const { projectIds } = await getEmployeeProjectScope(prisma, user.id);
     if (!projectIds.length) {
@@ -57,6 +67,33 @@ async function list(prisma, query = {}, user = null) {
     prisma.project.count({ where }),
   ]);
   return { items, total, page: Math.floor(skip / take) + 1, limit: take, totalPages: Math.ceil(total / take) };
+}
+
+async function listAll(prisma, query = {}, user = null) {
+  const { status, clientId, fromDate, toDate } = query;
+  const where = {};
+  if (status && String(status).trim()) where.status = String(status).trim();
+  if (clientId && String(clientId).trim()) where.clientId = String(clientId).trim();
+  const createdAt = {};
+  if (fromDate) {
+    const parsed = new Date(`${String(fromDate).trim()}T00:00:00.000Z`);
+    if (!Number.isNaN(parsed.getTime())) createdAt.gte = parsed;
+  }
+  if (toDate) {
+    const parsed = new Date(`${String(toDate).trim()}T23:59:59.999Z`);
+    if (!Number.isNaN(parsed.getTime())) createdAt.lte = parsed;
+  }
+  if (Object.keys(createdAt).length) where.createdAt = createdAt;
+  if (user?.role === 'EMPLOYEE') {
+    const { projectIds } = await getEmployeeProjectScope(prisma, user.id);
+    if (!projectIds.length) return [];
+    where.id = { in: projectIds };
+  }
+  return prisma.project.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    include: { client: clientSelect, ...assigneeInclude },
+  });
 }
 
 async function getById(prisma, id, user = null) {
@@ -169,4 +206,4 @@ async function bulkCreateFromRows(prisma, rows) {
   return { created, errors };
 }
 
-module.exports = { list, getById, create, update, updateStatus, remove, bulkCreateFromRows };
+module.exports = { list, listAll, getById, create, update, updateStatus, remove, bulkCreateFromRows };

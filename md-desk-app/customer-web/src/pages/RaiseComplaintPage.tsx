@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
@@ -17,9 +17,11 @@ import {
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import { complaintsApi, dashboardApi } from '../api/endpoints';
 import { ACCEPT_FULL_MEDIA, validateFilesFullMedia } from '../constants/uploadAccept';
+import { useAuth } from '../hooks/useAuth';
 
 export default function RaiseComplaintPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
@@ -35,6 +37,14 @@ export default function RaiseComplaintPage() {
     queryFn: async () => (await dashboardApi.customerSummary()).data,
   });
   const activeProjects = dashData?.activeProjects ?? [];
+
+  useEffect(() => {
+    const authUser = (user as { name?: string; phone?: string; city?: string } | null) || null;
+    if (!authUser) return;
+    if (!name && authUser.name) setName(authUser.name);
+    if (!phone && authUser.phone) setPhone(authUser.phone);
+    if (!city && authUser.city) setCity(authUser.city);
+  }, [user, name, phone, city]);
 
   const createMutation = useMutation({
     mutationFn: async () => {

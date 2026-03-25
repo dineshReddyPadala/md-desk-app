@@ -1,8 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { Box, Paper, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Grid, Skeleton } from '@mui/material';
+import { Box, Paper, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Grid, Skeleton, Button } from '@mui/material';
 import PublicIcon from '@mui/icons-material/Public';
 import CategoryIcon from '@mui/icons-material/Category';
+import DownloadIcon from '@mui/icons-material/Download';
 import { dashboardApi } from '../api/endpoints';
+import { downloadBlob } from '../utils/downloadBlob';
 
 export default function ReportsPage() {
   const { data: regionData, isLoading: regionLoading } = useQuery({
@@ -17,11 +19,21 @@ export default function ReportsPage() {
   const regionStats = regionData?.stats || [];
   const projectComplaintStats = projectComplaintData?.stats || [];
 
+  const handleExport = async () => {
+    const res = await dashboardApi.export({ days: 7 });
+    downloadBlob(res.data, 'dashboard_reports_export.xlsx');
+  };
+
   return (
     <Box>
-      <Typography variant="h4" fontWeight={700} gutterBottom>
-        Reports
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 2, mb: 1, flexWrap: 'wrap' }}>
+        <Typography variant="h4" fontWeight={700} gutterBottom>
+          Reports
+        </Typography>
+        <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => void handleExport()}>
+          Export Excel
+        </Button>
+      </Box>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
         Region-wise and project-linked complaint analytics
       </Typography>

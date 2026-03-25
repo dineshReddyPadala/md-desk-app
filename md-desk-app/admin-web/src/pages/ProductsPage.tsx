@@ -23,10 +23,13 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ImageIcon from '@mui/icons-material/Image';
+import DownloadIcon from '@mui/icons-material/Download';
+import SearchIcon from '@mui/icons-material/Search';
 import { productsApi, uploadApi, type ProductDto } from '../api/endpoints';
 import { getBackendErrorMessage } from '../api/getBackendErrorMessage';
 import { useStaffRole } from '../hooks/useStaffRole';
 import { ACCEPT_IMAGES_ONLY, validateFilesImageOnly } from '../constants/uploadAccept';
+import { downloadBlob } from '../utils/downloadBlob';
 
 export default function ProductsPage() {
   const { canMutate } = useStaffRole();
@@ -37,11 +40,12 @@ export default function ProductsPage() {
   const [imageUrl, setImageUrl] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imageFileError, setImageFileError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['products'],
-    queryFn: async () => (await productsApi.list()).data,
+    queryKey: ['products', search],
+    queryFn: async () => (await productsApi.list({ search: search || undefined })).data,
   });
   const products = (data?.products || []) as ProductDto[];
 
@@ -127,12 +131,33 @@ export default function ProductsPage() {
     }
   };
 
+  const handleExport = async () => {
+    const res = await productsApi.export({ search: search || undefined });
+    downloadBlob(res.data, 'products_export.xlsx');
+  };
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" fontWeight={700}>Products</Typography>
-        {canMutate && <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenAdd}>Add Product</Button>}
+        {canMutate && (
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => void handleExport()}>Export Excel</Button>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenAdd}>Add Product</Button>
+          </Box>
+        )}
       </Box>
+      <Paper sx={{ mb: 2, p: 2, display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+        <TextField
+          size="small"
+          placeholder="Search by name or description..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          sx={{ minWidth: 260 }}
+          InputProps={{ startAdornment: <SearchIcon color="action" sx={{ mr: 1 }} /> }}
+        />
+        <Button onClick={() => setSearch('')}>Clear filters</Button>
+      </Paper>
       <TableContainer component={Paper}>
         <Table>
           <TableHead>

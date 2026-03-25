@@ -30,7 +30,7 @@ export const complaintsApi = {
     }
     return api.post<{ success: boolean; complaint_id: string; id: string }>('/complaints', data);
   },
-  myList: (params?: { page?: number; limit?: number; status?: string; priority?: string }) =>
+  myList: (params?: { page?: number; limit?: number; status?: string; priority?: string; fromDate?: string; toDate?: string }) =>
     api.get<{ success: boolean; items: unknown[]; total: number; page: number; totalPages: number }>('/complaints/my', { params }),
   getById: (id: string) => api.get<{ success: boolean; complaint: unknown }>(`/complaints/${id}`),
   trackByComplaintId: (complaintId: string) =>

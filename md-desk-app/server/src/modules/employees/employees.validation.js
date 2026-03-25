@@ -35,6 +35,9 @@ const listQuerySchema = {
       page: { type: 'integer', default: 1 },
       limit: { type: 'integer', default: 20 },
       search: { type: 'string' },
+      designation: { type: 'string' },
+      fromDate: { type: 'string' },
+      toDate: { type: 'string' },
     },
   },
 };
