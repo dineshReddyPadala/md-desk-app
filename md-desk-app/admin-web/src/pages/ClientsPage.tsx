@@ -47,7 +47,6 @@ export default function ClientsPage() {
   });
   const clients = (data?.clients || []) as ClientDto[];
   const total = data?.total ?? 0;
-  const totalPages = data?.totalPages ?? 0;
 
   const updateMutation = useMutation({
     mutationFn: () => editing ? clientsApi.update(editing.id, { name: name.trim(), phone: phone || undefined, email: email || undefined, company: company || undefined }) : Promise.reject(),

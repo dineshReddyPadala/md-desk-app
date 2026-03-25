@@ -130,34 +130,44 @@ async function highPriority(req, reply) {
 
 async function updateStatus(req, reply) {
   const { id } = req.params;
-  const { status, priority } = req.body || {};
+  const { status, priority, comment } = req.body || {};
   const employeeUserId = req.user?.role === 'EMPLOYEE' ? req.user.id : null;
-  const complaint = await complaintsService.updateStatus(req.server.prisma, id, status, priority, {
+  const result = await complaintsService.updateStatus(req.server.prisma, id, status, priority, comment, {
     employeeUserId,
+    actorUserId: req.user?.id,
+    actorRole: req.user?.role,
   });
-  try {
-    await notificationsService.create(req.server.prisma, {
-      userId: complaint.userId,
-      type: 'status_updated',
-      title: 'Complaint status updated',
-      body: `Your complaint ${complaint.complaintId} is now ${status.replace(/_/g, ' ')}.`,
-    });
-    const ioStatus = getIo();
-    if (ioStatus) {
-      ioStatus.to(`user:${complaint.userId}`).emit('notification', { type: 'status_updated', title: 'Complaint status updated', body: `Your complaint ${complaint.complaintId} is now ${status.replace(/_/g, ' ')}.` });
+  const { complaint, changes } = result;
+
+  if (changes.statusChanged) {
+    try {
+      await notificationsService.create(req.server.prisma, {
+        userId: complaint.userId,
+        type: 'status_updated',
+        title: 'Complaint status updated',
+        body: `Your complaint ${complaint.complaintId} is now ${complaint.status.replace(/_/g, ' ')}.`,
+      });
+      const ioStatus = getIo();
+      if (ioStatus) {
+        ioStatus.to(`user:${complaint.userId}`).emit('notification', {
+          type: 'status_updated',
+          title: 'Complaint status updated',
+          body: `Your complaint ${complaint.complaintId} is now ${complaint.status.replace(/_/g, ' ')}.`,
+        });
+      }
+    } catch (err) {
+      req.log?.error?.(err) || console.error('Notification create failed:', err);
     }
-  } catch (err) {
-    req.log?.error?.(err) || console.error('Notification create failed:', err);
+    if (complaint.user?.email) {
+      emailService.sendStatusUpdateEmail(
+        complaint.user.email,
+        complaint.user.name || 'Customer',
+        complaint.complaintId,
+        complaint.status
+      ).catch((err) => { req.log?.error?.(err) || console.error('Status update email failed:', err); });
+    }
   }
-  if (complaint.user?.email) {
-    emailService.sendStatusUpdateEmail(
-      complaint.user.email,
-      complaint.user.name || 'Customer',
-      complaint.complaintId,
-      status
-    ).catch((err) => { req.log?.error?.(err) || console.error('Status update email failed:', err); });
-  }
-  return reply.send({ success: true, complaint });
+  return reply.send({ success: true, complaint, changes });
 }
 
 module.exports = {

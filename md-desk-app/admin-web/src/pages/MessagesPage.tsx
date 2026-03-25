@@ -56,9 +56,19 @@ export default function MessagesPage() {
     subject: string;
     message: string;
     createdAt: string;
+    adminReply?: string;
     user?: { name: string; email: string };
   }>;
-  const msg = detail?.message as { id: string; subject: string; message: string; adminReply?: string; user?: { name: string; email: string } } | undefined;
+  const msg = detail?.message as
+    | {
+        id: string;
+        subject: string;
+        message: string;
+        adminReply?: string;
+        repliedAt?: string;
+        user?: { name: string; email: string };
+      }
+    | undefined;
 
   return (
     <Box>
@@ -88,7 +98,7 @@ export default function MessagesPage() {
                     </TableCell>
                     <TableCell>{row.subject}</TableCell>
                     <TableCell>{new Date(row.createdAt).toLocaleDateString()}</TableCell>
-                    <TableCell>{(row as { adminReply?: string }).adminReply ? <Chip label="Replied" color="success" size="small" /> : <Chip label="Pending" size="small" />}</TableCell>
+                    <TableCell>{row.adminReply ? <Chip label="Replied" color="success" size="small" /> : <Chip label="Pending" size="small" />}</TableCell>
                     <TableCell align="right">
                       <Button size="small" startIcon={<ReplyIcon />} variant="outlined" onClick={() => setSelectedId(row.id)}>View / Reply</Button>
                     </TableCell>
@@ -122,7 +132,7 @@ export default function MessagesPage() {
                 <Paper sx={{ p: 2, mb: 2, bgcolor: 'primary.50', borderRadius: 2, border: '1px solid', borderColor: 'primary.200' }}>
                   <Typography variant="subtitle2" color="primary.main" gutterBottom>Your reply</Typography>
                   <Typography variant="body1">{msg.adminReply}</Typography>
-                  {(msg as { repliedAt?: string }).repliedAt && <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>{new Date((msg as { repliedAt: string }).repliedAt).toLocaleString()}</Typography>}
+                  {msg.repliedAt && <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>{new Date(msg.repliedAt).toLocaleString()}</Typography>}
                 </Paper>
               )}
               {!msg.adminReply && (

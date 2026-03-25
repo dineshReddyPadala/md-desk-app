@@ -23,6 +23,7 @@ const updateStatusSchema = {
     properties: {
       status: { type: 'string', enum: ['RECEIVED', 'UNDER_REVIEW', 'IN_PROGRESS', 'RESOLVED'] },
       priority: { type: 'string', enum: ['HIGH', 'MEDIUM', 'LOW'] },
+      comment: { type: 'string' },
     },
   },
 };

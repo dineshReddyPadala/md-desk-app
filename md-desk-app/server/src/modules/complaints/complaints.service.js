@@ -19,6 +19,40 @@ function buildListWhere(status, priority, city, scopeWhere) {
   return { AND: filters };
 }
 
+function toTitleCase(value) {
+  return String(value || '')
+    .toLowerCase()
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function buildActivityMessage(complaint, nextStatus, nextPriority, comment) {
+  const parts = [];
+  if (complaint.status !== nextStatus) {
+    parts.push(`Status changed from ${toTitleCase(complaint.status)} to ${toTitleCase(nextStatus)}.`);
+  }
+  if (nextPriority && complaint.priority !== nextPriority) {
+    parts.push(`Priority changed from ${toTitleCase(complaint.priority)} to ${toTitleCase(nextPriority)}.`);
+  }
+  if (comment) {
+    parts.push(`Comment: ${comment}`);
+  }
+  return parts.join(' ');
+}
+
+async function resolveActorLabel(prisma, actorUserId, actorRole) {
+  if (!actorUserId) return actorRole || 'Staff';
+  const actor = await prisma.user.findUnique({
+    where: { id: actorUserId },
+    select: { name: true, email: true, role: true },
+  });
+  if (!actor) return actorRole || 'Staff';
+  const displayName = actor.name && String(actor.name).trim() ? String(actor.name).trim() : actor.email;
+  return `${displayName} (${actor.role})`;
+}
+
 async function resolveProjectForCreate(prisma, userId, projectIdRaw) {
   if (projectIdRaw == null || String(projectIdRaw).trim() === '') return { projectId: null };
   const projectId = String(projectIdRaw).trim();
@@ -96,7 +130,7 @@ async function getComplaintById(prisma, id, userId = null) {
     include: {
       media: true,
       user: { select: { name: true, email: true, phone: true, city: true } },
-      adminResponses: true,
+      adminResponses: { orderBy: { createdAt: 'desc' } },
       project: { select: { id: true, name: true } },
     },
   });
@@ -111,7 +145,11 @@ async function getComplaintById(prisma, id, userId = null) {
 async function getComplaintByComplaintId(prisma, complaintId, userId) {
   const complaint = await prisma.complaint.findFirst({
     where: { complaintId, userId },
-    include: { media: true, adminResponses: true, project: { select: { id: true, name: true } } },
+    include: {
+      media: true,
+      adminResponses: { orderBy: { createdAt: 'desc' } },
+      project: { select: { id: true, name: true } },
+    },
   });
   if (!complaint) {
     const err = new Error('Complaint not found');
@@ -145,8 +183,8 @@ async function getHighPriority(prisma, page = 1, limit = 20, scopeWhere = null) 
   return adminListComplaints(prisma, page, limit, null, 'HIGH', null, scopeWhere);
 }
 
-async function updateStatus(prisma, id, status, priority = null, options = {}) {
-  const { employeeUserId = null } = options;
+async function updateStatus(prisma, id, status, priority = null, comment = '', options = {}) {
+  const { employeeUserId = null, actorUserId = null, actorRole = null } = options;
   if (employeeUserId) {
     const ok = await employeeProjectScope.canEmployeeAccessComplaint(prisma, employeeUserId, id);
     if (!ok) {
@@ -161,18 +199,78 @@ async function updateStatus(prisma, id, status, priority = null, options = {}) {
     err.statusCode = 400;
     throw err;
   }
-  const data = { status: status.toUpperCase() };
+
+  const complaint = await prisma.complaint.findUnique({
+    where: { id },
+    select: { id: true, complaintId: true, status: true, priority: true },
+  });
+  if (!complaint) {
+    const err = new Error('Complaint not found');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const nextStatus = status.toUpperCase();
+  let nextPriority = null;
   if (priority != null && priority !== '') {
     const validPriority = ['HIGH', 'MEDIUM', 'LOW'];
     if (validPriority.includes(priority.toUpperCase())) {
-      data.priority = priority.toUpperCase();
+      nextPriority = priority.toUpperCase();
     }
   }
-  return prisma.complaint.update({
-    where: { id },
-    data,
-    include: { media: true, user: true, project: { select: { id: true, name: true } } },
+  const trimmedComment = typeof comment === 'string' ? comment.trim() : '';
+  const statusChanged = complaint.status !== nextStatus;
+  const priorityChanged = nextPriority != null && complaint.priority !== nextPriority;
+  if (!statusChanged && !priorityChanged && !trimmedComment) {
+    const err = new Error('Please change the status or priority, or add a comment');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const activityMessage = buildActivityMessage(
+    complaint,
+    nextStatus,
+    nextPriority || complaint.priority,
+    trimmedComment
+  );
+  const actorLabel = await resolveActorLabel(prisma, actorUserId || employeeUserId, actorRole);
+  const updateData = {};
+  if (statusChanged) updateData.status = nextStatus;
+  if (priorityChanged) updateData.priority = nextPriority;
+
+  const updatedComplaint = await prisma.$transaction(async (tx) => {
+    if (Object.keys(updateData).length > 0) {
+      await tx.complaint.update({
+        where: { id },
+        data: updateData,
+      });
+    }
+    await tx.adminResponse.create({
+      data: {
+        complaintId: id,
+        message: activityMessage,
+        createdBy: actorLabel,
+      },
+    });
+    return tx.complaint.findUnique({
+      where: { id },
+      include: {
+        media: true,
+        user: true,
+        adminResponses: { orderBy: { createdAt: 'desc' } },
+        project: { select: { id: true, name: true } },
+      },
+    });
   });
+
+  return {
+    complaint: updatedComplaint,
+    changes: {
+      statusChanged,
+      priorityChanged,
+      commentAdded: Boolean(trimmedComment),
+    },
+  };
 }
 
 module.exports = {

@@ -42,7 +42,7 @@ export const complaintsApi = {
   highPriority: (params?: { page?: number; limit?: number }) =>
     api.get<{ success: boolean; items: unknown[] }>('/admin/complaints/high-priority', { params }),
   getById: (id: string) => api.get<{ success: boolean; complaint: unknown }>(`/complaints/${id}`),
-  updateStatus: (id: string, payload: { status: string; priority?: string }) =>
+  updateStatus: (id: string, payload: { status: string; priority?: string; comment?: string }) =>
     api.put<{ success: boolean; complaint: unknown }>(`/admin/complaints/${id}/status`, payload),
 };
 
