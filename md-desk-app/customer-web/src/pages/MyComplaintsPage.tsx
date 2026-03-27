@@ -24,6 +24,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { complaintsApi } from '../api/endpoints';
+import { useAuth } from '../hooks/useAuth';
 
 const statusColors: Record<string, 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning'> = {
   RECEIVED: 'info',
@@ -33,7 +34,10 @@ const statusColors: Record<string, 'default' | 'primary' | 'secondary' | 'error'
 };
 
 export default function MyComplaintsPage() {
+  const { user } = useAuth();
   const navigate = useNavigate();
+  const role = (user as { role?: string } | null)?.role;
+  const isEmployee = role === 'EMPLOYEE';
   const [page, setPage] = useState(0);
   const [limit, setLimit] = useState(10);
   const [status, setStatus] = useState<string>('');
@@ -69,21 +73,23 @@ export default function MyComplaintsPage() {
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 2, mb: 3 }}>
         <Box>
           <Typography variant="h4" fontWeight={700} gutterBottom>
-            My Complaints
+            {isEmployee ? 'Assigned Complaints' : 'My Complaints'}
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            View your complaints and raise a new one.
+            {isEmployee ? 'View complaints assigned to your projects.' : 'View your complaints and raise a new one.'}
           </Typography>
         </Box>
-        <Button
-          component={Link}
-          to="/raise-complaint"
-          variant="contained"
-          startIcon={<AddIcon />}
-          sx={{ flexShrink: 0 }}
-        >
-          New complaint
-        </Button>
+        {!isEmployee && (
+          <Button
+            component={Link}
+            to="/raise-complaint"
+            variant="contained"
+            startIcon={<AddIcon />}
+            sx={{ flexShrink: 0 }}
+          >
+            New complaint
+          </Button>
+        )}
       </Box>
 
       <Paper sx={{ mb: 2, p: 2, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -147,9 +153,11 @@ export default function MyComplaintsPage() {
                   <TableRow>
                     <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
                       <Typography color="text.secondary">No complaints yet.</Typography>
-                      <Button component={Link} to="/raise-complaint" variant="outlined" sx={{ mt: 2 }}>
-                        Raise a complaint
-                      </Button>
+                      {!isEmployee && (
+                        <Button component={Link} to="/raise-complaint" variant="outlined" sx={{ mt: 2 }}>
+                          Raise a complaint
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 )

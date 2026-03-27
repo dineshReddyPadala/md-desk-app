@@ -6,6 +6,9 @@ const { getIo } = require('../../socket');
 const { sendWorkbook } = require('../../utils/excel');
 
 async function createComplaint(req, reply) {
+  if (req.user?.role !== 'CUSTOMER') {
+    return reply.status(403).send({ success: false, message: 'Only customers can raise complaints' });
+  }
   const body = req.body || {};
   const fileUrls = req.fileUrls || [];
   const complaint = await complaintsService.createComplaint(
@@ -84,15 +87,22 @@ async function createComplaint(req, reply) {
 
 async function myComplaints(req, reply) {
   const { page = 1, limit = 10, status, priority, fromDate, toDate } = req.query || {};
+  let complaintOwnerId = req.user.id;
+  let scopeWhere = null;
+  if (req.user?.role === 'EMPLOYEE') {
+    complaintOwnerId = null;
+    scopeWhere = await employeeProjectScope.employeeComplaintWhere(req.server.prisma, req.user.id);
+  }
   const result = await complaintsService.getMyComplaints(
     req.server.prisma,
-    req.user.id,
+    complaintOwnerId,
     Number(page),
     Number(limit),
     status,
     priority,
     fromDate,
-    toDate
+    toDate,
+    { scopeWhere }
   );
   return reply.send({ success: true, ...result });
 }
@@ -116,10 +126,20 @@ async function getComplaint(req, reply) {
 
 async function getByComplaintId(req, reply) {
   const { complaintId } = req.params;
+  let complaintOwnerId = req.user.id;
+  let scopeWhere = null;
+  if (req.user?.role === 'EMPLOYEE') {
+    complaintOwnerId = null;
+    scopeWhere = await employeeProjectScope.employeeComplaintWhere(req.server.prisma, req.user.id);
+  }
+  if (req.user?.role === 'ADMIN') {
+    complaintOwnerId = null;
+  }
   const complaint = await complaintsService.getComplaintByComplaintId(
     req.server.prisma,
     complaintId,
-    req.user.id
+    complaintOwnerId,
+    { scopeWhere }
   );
   return reply.send({ success: true, complaint });
 }

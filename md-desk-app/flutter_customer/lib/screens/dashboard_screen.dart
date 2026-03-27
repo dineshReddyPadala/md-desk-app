@@ -96,6 +96,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final role = context.watch<AuthProvider>().user?['role'] as String?;
+    final isEmployee = role == 'EMPLOYEE';
 
     return RefreshIndicator(
       onRefresh: _loadSummary,
@@ -111,7 +113,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   children: [
                     Text('Dashboard', style: theme.textTheme.titleLarge),
                     Text(
-                      'Overview of your projects, complaints, and shortcuts',
+                      isEmployee
+                          ? 'Overview of your assigned projects and complaints'
+                          : 'Overview of your projects, complaints, and shortcuts',
                       style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
                     ),
                   ],
@@ -228,7 +232,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 8),
                     FilledButton(
                       onPressed: () => context.go('/complaints'),
-                      child: const Text('My complaints'),
+                      child: Text(isEmployee ? 'Assigned complaints' : 'My complaints'),
                     ),
                   ],
                 ],
@@ -238,12 +242,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 20),
           Text('Shortcuts', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          _Tile(
-            title: 'Raise Complaint',
-            subtitle: 'Submit a new complaint with photos',
-            icon: Icons.report_problem,
-            onTap: () => context.go('/raise-complaint'),
-          ),
+          if (!isEmployee)
+            _Tile(
+              title: 'Raise Complaint',
+              subtitle: 'Submit a new complaint with photos',
+              icon: Icons.report_problem,
+              onTap: () => context.go('/raise-complaint'),
+            ),
           _Tile(
             title: 'Track Complaint',
             subtitle: 'Check status with your complaint ID',

@@ -29,6 +29,16 @@ type AdminResponse = {
   createdAt: string;
 };
 
+function getAttachmentLabel(url: string) {
+  try {
+    const pathname = new URL(url).pathname;
+    return decodeURIComponent(pathname.split('/').pop() || 'Attachment');
+  } catch {
+    const parts = url.split('/');
+    return decodeURIComponent(parts[parts.length - 1] || 'Attachment');
+  }
+}
+
 function formatDateTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
@@ -105,7 +115,7 @@ export default function ComplaintDetailPage() {
       createdBy: displayName || user.email || 'Customer',
       createdAt: complaint.createdAt,
     },
-  ];
+  ].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
   return (
     <Box>
@@ -209,7 +219,7 @@ export default function ComplaintDetailPage() {
                     </Card>
                   ) : (
                     <Button key={m.fileUrl} href={m.fileUrl} target="_blank" rel="noopener">
-                      View file
+                      {getAttachmentLabel(m.fileUrl)}
                     </Button>
                   )
                 )}
@@ -224,8 +234,11 @@ export default function ComplaintDetailPage() {
             </Typography>
             <Stack divider={<Divider flexItem />} spacing={2}>
               {activityItems.map((activity) => (
-                <Box key={activity.id}>
-                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                <Box
+                  key={activity.id}
+                  sx={{ pl: 2, borderLeft: '3px solid', borderColor: 'primary.light' }}
+                >
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>
                     {activity.message}
                   </Typography>
                   <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>

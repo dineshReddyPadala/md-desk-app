@@ -22,6 +22,7 @@ import { useAuth } from '../hooks/useAuth';
 export default function RaiseComplaintPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const role = (user as { role?: string } | null)?.role;
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
@@ -88,6 +89,14 @@ export default function RaiseComplaintPage() {
     }
     createMutation.mutate();
   };
+
+  if (role === 'EMPLOYEE') {
+    return (
+      <Alert severity="info">
+        Employees cannot raise complaints from this screen. Please review assigned complaints instead.
+      </Alert>
+    );
+  }
 
   return (
     <Box>

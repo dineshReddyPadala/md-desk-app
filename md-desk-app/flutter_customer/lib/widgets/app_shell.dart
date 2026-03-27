@@ -168,7 +168,7 @@ class _AppShellState extends State<AppShell> {
 
   String _formatDate(String iso) {
     try {
-      final d = DateTime.parse(iso);
+      final d = DateTime.parse(iso).toLocal();
       return '${d.day}/${d.month}/${d.year} ${d.hour}:${d.minute.toString().padLeft(2, '0')}';
     } catch (_) {
       return iso;
@@ -186,17 +186,21 @@ class _AppShellState extends State<AppShell> {
     }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('MD Desk'),
+        title: const Text(
+          'MD Desk',
+          overflow: TextOverflow.fade,
+          softWrap: false,
+        ),
         actions: [
           Padding(
             padding: const EdgeInsets.only(left: 4, right: 2),
             child: SizedBox(
               height: 26,
-              width: 108,
+              width: 84,
               child: FittedBox(
                 fit: BoxFit.contain,
                 alignment: Alignment.centerRight,
-                child: TechnoPaintsLogo(height: 26, alignment: Alignment.centerRight),
+                child: TechnoPaintsLogo(height: 22, alignment: Alignment.centerRight),
               ),
             ),
           ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:socket_io_client/socket_io_client.dart' as IO;
 import '../auth_provider.dart';
 import '../api/client.dart';
 
@@ -18,18 +19,40 @@ class _MessageMDScreenState extends State<MessageMDScreen> {
   bool _sending = false;
   bool _loading = false;
   bool _success = false;
+  IO.Socket? _socket;
 
   @override
   void initState() {
     super.initState();
     _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _connectSocket());
   }
 
   @override
   void dispose() {
+    _socket?.disconnect();
+    _socket?.dispose();
     _subjectController.dispose();
     _messageController.dispose();
     super.dispose();
+  }
+
+  void _connectSocket() {
+    final token = context.read<AuthProvider>().token;
+    if (token == null || token.isEmpty) return;
+    final origin = ApiClient.socketOrigin(AuthProvider.baseUrl);
+    final socket = IO.io(
+      origin,
+      IO.OptionBuilder()
+          .setPath('/socket.io')
+          .setTransports(['websocket', 'polling'])
+          .setAuth({'token': token})
+          .build(),
+    );
+    _socket = socket;
+    socket.on('message:reply', (_) {
+      if (mounted) _load();
+    });
   }
 
   Future<void> _load() async {
@@ -217,7 +240,7 @@ class _MessageMDScreenState extends State<MessageMDScreen> {
 
   String _formatDate(String iso) {
     try {
-      final d = DateTime.parse(iso);
+      final d = DateTime.parse(iso).toLocal();
       return '${d.day}/${d.month}/${d.year} ${d.hour}:${d.minute.toString().padLeft(2, '0')}';
     } catch (_) {
       return iso;

@@ -32,6 +32,11 @@ import { getBackendErrorMessage } from '../api/getBackendErrorMessage';
 import { validateFilesMaxSize } from '../constants/uploadAccept';
 import { downloadBlob } from '../utils/downloadBlob';
 
+function formatDateTime(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
+}
+
 export default function EmployeesPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<EmployeeDto | null>(null);
@@ -260,6 +265,8 @@ export default function EmployeesPage() {
               <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Mobile</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Designation</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Created At</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Updated At</TableCell>
               <TableCell sx={{ fontWeight: 600 }} align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
@@ -267,7 +274,7 @@ export default function EmployeesPage() {
             {isLoading
               ? Array.from({ length: 5 }).map((_, i) => (
                   <TableRow key={i}>
-                    <TableCell colSpan={5}><Skeleton height={48} /></TableCell>
+                    <TableCell colSpan={7}><Skeleton height={48} /></TableCell>
                   </TableRow>
                 ))
               : items.map((row) => (
@@ -276,6 +283,8 @@ export default function EmployeesPage() {
                     <TableCell>{row.email}</TableCell>
                     <TableCell>{row.mobile}</TableCell>
                     <TableCell>{row.designation || '—'}</TableCell>
+                    <TableCell>{formatDateTime(row.createdAt)}</TableCell>
+                    <TableCell>{formatDateTime(row.updatedAt)}</TableCell>
                     <TableCell align="right">
                       <IconButton size="small" onClick={() => handleOpenEdit(row)}><EditIcon fontSize="small" /></IconButton>
                       <IconButton size="small" color="error" onClick={() => window.confirm('Delete this employee?') && deleteMutation.mutate(row.id)}><DeleteIcon fontSize="small" /></IconButton>

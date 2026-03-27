@@ -145,6 +145,14 @@ async function exportDashboard(req, reply) {
 }
 
 async function customerSummary(req, reply) {
+  if (req.user?.role === 'EMPLOYEE') {
+    const { projectIds, clientIds } = await employeeProjectScope.getEmployeeProjectScope(req.server.prisma, req.user.id);
+    const data = await dashboardService.getCustomerSummary(req.server.prisma, req.user.id, {
+      projectIds,
+      complaintWhere: employeeProjectScope.complaintsWhereFromScope(projectIds, clientIds),
+    });
+    return reply.send({ success: true, ...data });
+  }
   const data = await dashboardService.getCustomerSummary(req.server.prisma, req.user.id);
   return reply.send({ success: true, ...data });
 }

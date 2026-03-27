@@ -10,7 +10,7 @@ async function create(req, reply) {
     message,
   });
   try {
-    await notificationsService.notifyAdmins(req.server.prisma, {
+    await notificationsService.notifyRoles(req.server.prisma, ['ADMIN'], {
       type: 'new_message',
       title: 'New customer message',
       body: subject,

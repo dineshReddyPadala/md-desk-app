@@ -12,12 +12,16 @@ async function create(prisma, { userId, type, title, body }) {
   });
 }
 
-async function notifyAdmins(prisma, { type, title, body }) {
+async function notifyRoles(prisma, roles, { type, title, body }) {
   const staff = await prisma.user.findMany({
-    where: { role: { in: ['ADMIN', 'EMPLOYEE'] } },
+    where: { role: { in: roles } },
     select: { id: true },
   });
   await Promise.all(staff.map((a) => create(prisma, { userId: a.id, type, title, body })));
+}
+
+async function notifyAdmins(prisma, payload) {
+  return notifyRoles(prisma, ['ADMIN', 'EMPLOYEE'], payload);
 }
 
 async function listForUser(prisma, userId, { limit = 20 } = {}) {
@@ -48,4 +52,4 @@ async function markAllRead(prisma, userId) {
   });
 }
 
-module.exports = { create, notifyAdmins, listForUser, unreadCount, markRead, markAllRead };
+module.exports = { create, notifyRoles, notifyAdmins, listForUser, unreadCount, markRead, markAllRead };

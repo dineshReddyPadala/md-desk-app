@@ -142,10 +142,13 @@ async function getCreationStats(prisma, days = 7, scopeComplaintWhere = null) {
     .map(([date, count]) => ({ date, count }));
 }
 
-async function getCustomerSummary(prisma, userId) {
+async function getCustomerSummary(prisma, userId, options = {}) {
+  const { projectIds = null, complaintWhere = null } = options;
   const [activeProjects, complaintCounts] = await Promise.all([
     prisma.project.findMany({
-      where: { clientId: userId, status: { in: ['PENDING', 'IN_PROGRESS'] } },
+      where: projectIds
+        ? { id: { in: projectIds }, status: { in: ['PENDING', 'IN_PROGRESS'] } }
+        : { clientId: userId, status: { in: ['PENDING', 'IN_PROGRESS'] } },
       orderBy: { updatedAt: 'desc' },
       take: 10,
       select: { id: true, name: true, status: true, startDate: true, endDate: true, updatedAt: true },
@@ -153,7 +156,7 @@ async function getCustomerSummary(prisma, userId) {
     prisma.complaint.groupBy({
       by: ['status'],
       _count: { id: true },
-      where: { userId },
+      where: complaintWhere || { userId },
     }),
   ]);
   const byStatus = Object.fromEntries(complaintCounts.map((x) => [x.status, x._count.id]));

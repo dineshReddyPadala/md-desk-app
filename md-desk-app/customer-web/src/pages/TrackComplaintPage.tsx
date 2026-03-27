@@ -24,6 +24,32 @@ import { getBackendErrorMessage } from '../api/getBackendErrorMessage';
 const statusSteps = ['RECEIVED', 'UNDER_REVIEW', 'IN_PROGRESS', 'RESOLVED'];
 const stepColors = ['#0097d7', '#f37336', '#ffb74d', '#2e7d32'];
 
+type ActivityItem = {
+  id: string;
+  message: string;
+  createdBy: string;
+  createdAt: string;
+};
+
+function formatDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('en-IN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date);
+}
+
+function getAttachmentLabel(url: string) {
+  try {
+    const pathname = new URL(url).pathname;
+    return decodeURIComponent(pathname.split('/').pop() || 'Attachment');
+  } catch {
+    const parts = url.split('/');
+    return decodeURIComponent(parts[parts.length - 1] || 'Attachment');
+  }
+}
+
 export default function TrackComplaintPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -61,6 +87,7 @@ export default function TrackComplaintPage() {
   });
 
   const complaint = data?.complaint as {
+    id: string;
     complaintId: string;
     status: string;
     priority: string;
@@ -68,11 +95,22 @@ export default function TrackComplaintPage() {
     description: string;
     projectLocation: string;
     media?: Array<{ id: string; fileUrl: string; fileType: string }>;
-    adminResponses?: unknown[];
+    adminResponses?: ActivityItem[];
     createdAt: string;
   } | undefined;
   const activeStep = statusSteps.indexOf(complaint?.status || '');
   const isImage = (type: string) => /^image\//i.test(type);
+  const activityItems: ActivityItem[] = complaint
+    ? [
+        ...(complaint.adminResponses || []),
+        {
+          id: `created-${complaint.id}`,
+          message: 'Complaint submitted.',
+          createdBy: 'Customer',
+          createdAt: complaint.createdAt,
+        },
+      ].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    : [];
 
   const handleTrack = () => {
     setSearchId(trimmedInput);
@@ -166,12 +204,36 @@ export default function TrackComplaintPage() {
                     {complaint.media.map((m) => (
                       <Box key={m.id} sx={{ width: 160, borderRadius: 2, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
                         {isImage(m.fileType) ? (
-                          <Box component="a" href={m.fileUrl} target="_blank" rel="noopener noreferrer" sx={{ display: 'block', lineHeight: 0 }}>
-                            <Box component="img" src={m.fileUrl} alt="Attachment" sx={{ width: '100%', height: 120, objectFit: 'cover' }} />
-                          </Box>
+                          <>
+                            <Box component="a" href={m.fileUrl} target="_blank" rel="noopener noreferrer" sx={{ display: 'block', lineHeight: 0 }}>
+                              <Box component="img" src={m.fileUrl} alt={getAttachmentLabel(m.fileUrl)} sx={{ width: '100%', height: 120, objectFit: 'cover' }} />
+                            </Box>
+                            <Typography variant="caption" display="block" sx={{ px: 1, py: 0.75 }}>
+                              {getAttachmentLabel(m.fileUrl)}
+                            </Typography>
+                          </>
                         ) : (
-                          <Box component="a" href={m.fileUrl} target="_blank" rel="noopener noreferrer" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 120, bgcolor: 'action.hover', color: 'primary.main', textDecoration: 'none', fontWeight: 500 }}>
-                            View file
+                          <Box
+                            component="a"
+                            href={m.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            sx={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              minHeight: 120,
+                              px: 1.5,
+                              py: 1,
+                              bgcolor: 'action.hover',
+                              color: 'primary.main',
+                              textDecoration: 'none',
+                              fontWeight: 500,
+                              textAlign: 'center',
+                              wordBreak: 'break-word',
+                            }}
+                          >
+                            {getAttachmentLabel(m.fileUrl)}
                           </Box>
                         )}
                       </Box>
@@ -179,7 +241,7 @@ export default function TrackComplaintPage() {
                   </Box>
                 </Box>
               )}
-              <Stepper activeStep={activeStep >= 0 ? activeStep : 0} sx={{ mt: 3 }}>
+              <Stepper activeStep={activeStep >= 0 ? activeStep : 0} alternativeLabel sx={{ mt: 3 }}>
                 {statusSteps.map((label, idx) => (
                   <Step key={label}>
                     <StepLabel
@@ -201,13 +263,41 @@ export default function TrackComplaintPage() {
                           {idx + 1}
                         </Box>
                       )}
-                      sx={{ '& .MuiStepLabel-label': { color: activeStep >= idx ? stepColors[idx] : 'text.secondary', fontWeight: activeStep === idx ? 700 : 400 } }}
+                      sx={{
+                        '& .MuiStepLabel-label': {
+                          color: activeStep >= idx ? stepColors[idx] : 'text.secondary',
+                          fontWeight: activeStep === idx ? 700 : 400,
+                          textAlign: 'center',
+                        },
+                      }}
                     >
                       {label.replace(/_/g, ' ')}
                     </StepLabel>
                   </Step>
                 ))}
               </Stepper>
+              {activityItems.length > 0 && (
+                <Box sx={{ mt: 4 }}>
+                  <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                    Activity
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                    {activityItems.map((activity) => (
+                      <Paper key={activity.id} variant="outlined" sx={{ p: 2, borderLeft: '3px solid', borderColor: 'primary.main' }}>
+                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                          {activity.message}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
+                          {activity.createdBy}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {formatDateTime(activity.createdAt)}
+                        </Typography>
+                      </Paper>
+                    ))}
+                  </Box>
+                </Box>
+              )}
             </Paper>
           )}
           {isError && (

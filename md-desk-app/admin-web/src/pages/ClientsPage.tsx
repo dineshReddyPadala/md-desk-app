@@ -34,6 +34,11 @@ import { downloadBlob } from '../utils/downloadBlob';
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const phonePattern = /^[0-9+\-() ]{7,20}$/;
 
+function formatDateTime(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleString();
+}
+
 export default function ClientsPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ClientDto | null>(null);
@@ -255,13 +260,15 @@ export default function ClientsPage() {
               <TableCell sx={{ fontWeight: 600 }}>Phone</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Email</TableCell>
               <TableCell sx={{ fontWeight: 600 }}>Company</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Created At</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>Updated At</TableCell>
               <TableCell sx={{ fontWeight: 600 }} align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {isLoading
               ? Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={i}><TableCell colSpan={5}><Skeleton height={56} /></TableCell></TableRow>
+                  <TableRow key={i}><TableCell colSpan={7}><Skeleton height={56} /></TableCell></TableRow>
                 ))
               : clients.map((c) => (
                   <TableRow key={c.id} hover>
@@ -269,6 +276,8 @@ export default function ClientsPage() {
                     <TableCell>{c.phone || '—'}</TableCell>
                     <TableCell>{c.email || '—'}</TableCell>
                     <TableCell>{c.company || '—'}</TableCell>
+                    <TableCell>{formatDateTime(c.createdAt)}</TableCell>
+                    <TableCell>{formatDateTime(c.updatedAt)}</TableCell>
                     <TableCell align="right">
                       <IconButton size="small" onClick={() => handleOpenEdit(c)}><EditIcon /></IconButton>
                       <IconButton size="small" color="error" onClick={() => window.confirm('Delete this client?') && deleteMutation.mutate(c.id)}><DeleteIcon /></IconButton>

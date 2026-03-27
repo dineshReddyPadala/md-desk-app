@@ -10,13 +10,13 @@ function generateComplaintId() {
 
 function parseDateStart(value) {
   if (!value) return null;
-  const parsed = new Date(`${String(value).trim()}T00:00:00.000Z`);
+  const parsed = new Date(`${String(value).trim()}T00:00:00.000`);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 function parseDateEnd(value) {
   if (!value) return null;
-  const parsed = new Date(`${String(value).trim()}T23:59:59.999Z`);
+  const parsed = new Date(`${String(value).trim()}T23:59:59.999`);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
@@ -132,21 +132,29 @@ async function createComplaint(prisma, userId, data, fileUrls = []) {
   return complaint;
 }
 
-async function getMyComplaints(prisma, userId, page = 1, limit = 10, status, priority, fromDate = null, toDate = null) {
+async function getMyComplaints(prisma, userId, page = 1, limit = 10, status, priority, fromDate = null, toDate = null, options = {}) {
+  const { scopeWhere = null } = options;
   const skip = (page - 1) * limit;
-  const where = { userId };
-  if (status) where.status = status;
-  if (priority) where.priority = priority;
+  const filters = [];
+  if (userId) filters.push({ userId });
+  if (scopeWhere && Object.keys(scopeWhere).length) filters.push(scopeWhere);
+  if (status) filters.push({ status });
+  if (priority) filters.push({ priority });
   const createdAt = {};
   const createdAfter = parseDateStart(fromDate);
   const createdBefore = parseDateEnd(toDate);
   if (createdAfter) createdAt.gte = createdAfter;
   if (createdBefore) createdAt.lte = createdBefore;
-  if (Object.keys(createdAt).length) where.createdAt = createdAt;
+  if (Object.keys(createdAt).length) filters.push({ createdAt });
+  const where = filters.length <= 1 ? (filters[0] || {}) : { AND: filters };
   const [items, total] = await Promise.all([
     prisma.complaint.findMany({
       where,
-      include: { media: true, project: { select: { id: true, name: true } } },
+      include: {
+        media: true,
+        user: { select: { name: true, email: true, phone: true, city: true } },
+        project: { select: { id: true, name: true } },
+      },
       orderBy: { createdAt: 'desc' },
       skip,
       take: limit,
@@ -176,11 +184,16 @@ async function getComplaintById(prisma, id, userId = null) {
   return complaint;
 }
 
-async function getComplaintByComplaintId(prisma, complaintId, userId) {
+async function getComplaintByComplaintId(prisma, complaintId, userId = null, options = {}) {
+  const { scopeWhere = null } = options;
+  const filters = [{ complaintId }];
+  if (userId) filters.push({ userId });
+  if (scopeWhere && Object.keys(scopeWhere).length) filters.push(scopeWhere);
   const complaint = await prisma.complaint.findFirst({
-    where: { complaintId, userId },
+    where: filters.length === 1 ? filters[0] : { AND: filters },
     include: {
       media: true,
+      user: { select: { name: true, email: true, phone: true, city: true } },
       adminResponses: { orderBy: { createdAt: 'desc' } },
       project: { select: { id: true, name: true } },
     },

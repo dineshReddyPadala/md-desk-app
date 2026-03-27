@@ -7,6 +7,7 @@ import MessageIcon from '@mui/icons-material/Message';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
 import { dashboardApi } from '../api/endpoints';
+import { useAuth } from '../hooks/useAuth';
 
 const statusLabels: Record<string, string> = {
   RECEIVED: 'Received',
@@ -22,6 +23,9 @@ const statusColors: Record<string, 'default' | 'primary' | 'secondary' | 'error'
 };
 
 export default function DashboardPage() {
+  const { user } = useAuth();
+  const role = (user as { role?: string } | null)?.role;
+  const isEmployee = role === 'EMPLOYEE';
   const { data: summary, isLoading } = useQuery({
     queryKey: ['customer-dashboard'],
     queryFn: async () => (await dashboardApi.customerSummary()).data,
@@ -49,7 +53,9 @@ export default function DashboardPage() {
       >
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="h5" gutterBottom sx={{ mb: 0 }}>Dashboard</Typography>
-          <Typography variant="body2" color="text.secondary">Overview of your projects, complaints, and messages</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {isEmployee ? 'Overview of your assigned projects and complaints' : 'Overview of your projects, complaints, and messages'}
+          </Typography>
         </Box>
         <Box
           component="img"
@@ -118,7 +124,9 @@ export default function DashboardPage() {
               </Grid>
             )}
             <Typography variant="body2" color="text.secondary">Total: {totalComplaints} complaint(s)</Typography>
-            <Button component={Link} to="/complaints" variant="contained" size="small" sx={{ mt: 2 }}>My complaints</Button>
+            <Button component={Link} to="/complaints" variant="contained" size="small" sx={{ mt: 2 }}>
+              {isEmployee ? 'Assigned complaints' : 'My complaints'}
+            </Button>
           </Paper>
         </Grid>
 
@@ -138,9 +146,13 @@ export default function DashboardPage() {
           <Card>
             <CardContent>
               <ReportProblemIcon color="primary" sx={{ fontSize: 48 }} />
-              <Typography variant="h6" sx={{ mt: 1 }}>Raise Complaint</Typography>
-              <Typography variant="body2" color="textSecondary">Submit a new complaint</Typography>
-              <Button component={Link} to="/complaints" variant="contained" sx={{ mt: 2 }}>Complaints</Button>
+              <Typography variant="h6" sx={{ mt: 1 }}>{isEmployee ? 'Assigned Complaints' : 'Raise Complaint'}</Typography>
+              <Typography variant="body2" color="textSecondary">
+                {isEmployee ? 'Review complaints linked to your projects' : 'Submit a new complaint'}
+              </Typography>
+              <Button component={Link} to="/complaints" variant="contained" sx={{ mt: 2 }}>
+                {isEmployee ? 'Complaints' : 'Complaints'}
+              </Button>
             </CardContent>
           </Card>
         </Grid>

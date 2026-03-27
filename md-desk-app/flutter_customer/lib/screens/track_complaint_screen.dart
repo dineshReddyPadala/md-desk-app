@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../auth_provider.dart';
 import '../api/client.dart';
 
@@ -11,6 +12,26 @@ const _stepColors = [
   Color(0xFFFFB74D),
   Color(0xFF2E7D32),
 ];
+
+String _formatDateTime(String iso) {
+  try {
+    final d = DateTime.parse(iso).toLocal();
+    return '${d.day}/${d.month}/${d.year} ${d.hour}:${d.minute.toString().padLeft(2, '0')}';
+  } catch (_) {
+    return iso;
+  }
+}
+
+String _attachmentLabel(String url) {
+  try {
+    final uri = Uri.parse(url);
+    final segment = uri.pathSegments.isNotEmpty ? uri.pathSegments.last : 'Attachment';
+    return Uri.decodeComponent(segment);
+  } catch (_) {
+    final parts = url.split('/');
+    return Uri.decodeComponent(parts.isNotEmpty ? parts.last : 'Attachment');
+  }
+}
 
 class TrackComplaintScreen extends StatefulWidget {
   const TrackComplaintScreen({super.key, this.initialComplaintId});
@@ -184,6 +205,14 @@ class _ComplaintResult extends StatelessWidget {
   const _ComplaintResult({required this.complaint});
   final Map<String, dynamic> complaint;
 
+  Future<void> _openUrl(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -194,6 +223,20 @@ class _ComplaintResult extends StatelessWidget {
     final category = complaint['category'] as String? ?? '';
     final projectLocation = complaint['projectLocation'] as String? ?? '';
     final media = (complaint['media'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final createdAt = complaint['createdAt'] as String? ?? '';
+    final activity = [
+      ...((complaint['adminResponses'] as List?)?.cast<Map<String, dynamic>>() ?? []),
+      {
+        'id': 'created-${complaint['id'] ?? complaintId}',
+        'message': 'Complaint submitted.',
+        'createdBy': 'Customer',
+        'createdAt': createdAt,
+      },
+    ]..sort((a, b) {
+        final aTime = DateTime.tryParse(a['createdAt'] as String? ?? '')?.millisecondsSinceEpoch ?? 0;
+        final bTime = DateTime.tryParse(b['createdAt'] as String? ?? '')?.millisecondsSinceEpoch ?? 0;
+        return aTime.compareTo(bTime);
+      });
     final activeStep = _statusSteps.indexOf(status);
     final stepIndex = activeStep >= 0 ? activeStep : 0;
 
@@ -229,15 +272,28 @@ class _ComplaintResult extends StatelessWidget {
                   final url = m['fileUrl'] as String? ?? '';
                   final type = m['fileType'] as String? ?? '';
                   final isImage = type.toLowerCase().startsWith('image/');
+                  final label = _attachmentLabel(url);
                   return SizedBox(
                     width: 160,
                     child: Card(
                       clipBehavior: Clip.antiAlias,
                       child: isImage
-                          ? Image.network(url, height: 120, fit: BoxFit.cover)
+                          ? InkWell(
+                              onTap: () => _openUrl(url),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Image.network(url, height: 120, fit: BoxFit.cover),
+                                  Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Text(label, style: theme.textTheme.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
+                                  ),
+                                ],
+                              ),
+                            )
                           : ListTile(
-                              title: const Text('View file'),
-                              onTap: () {},
+                              title: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis),
+                              onTap: () => _openUrl(url),
                             ),
                     ),
                   );
@@ -263,19 +319,47 @@ class _ComplaintResult extends StatelessWidget {
               }),
             ),
             const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
+            Row(
               children: _statusSteps.asMap().entries.map((e) {
                 final active = stepIndex == e.key;
-                return Text(
-                  e.value.replaceAll('_', ' '),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: active ? _stepColors[e.key] : theme.colorScheme.outline,
-                    fontWeight: active ? FontWeight.bold : FontWeight.normal,
+                return Expanded(
+                  child: Text(
+                    e.value.replaceAll('_', ' '),
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: active ? _stepColors[e.key] : theme.colorScheme.outline,
+                      fontWeight: active ? FontWeight.bold : FontWeight.normal,
+                    ),
                   ),
                 );
               }).toList(),
             ),
+            if (activity.isNotEmpty) ...[
+              const SizedBox(height: 24),
+              Text('Activity', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              ...activity.map((item) => Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(item['message'] as String? ?? '', style: theme.textTheme.bodyMedium),
+                          const SizedBox(height: 6),
+                          Text(
+                            item['createdBy'] as String? ?? '',
+                            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+                          ),
+                          Text(
+                            _formatDateTime(item['createdAt'] as String? ?? ''),
+                            style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.outline),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )),
+            ],
           ],
         ),
       ),

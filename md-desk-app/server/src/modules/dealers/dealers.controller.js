@@ -86,8 +86,6 @@ async function exportList(req, reply) {
       City: item.city || '',
       Phone: item.phone || '',
       ImageUrl: item.imageUrl || '',
-      LocationLat: item.locationLat ?? '',
-      LocationLong: item.locationLong ?? '',
     })),
   }]);
 }

@@ -248,6 +248,22 @@ class _RaiseComplaintScreenState extends State<RaiseComplaintScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final role = context.watch<AuthProvider>().user?['role'] as String?;
+
+    if (role == 'EMPLOYEE') {
+      return Padding(
+        padding: const EdgeInsets.all(24),
+        child: Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'Employees cannot raise complaints from this screen. Please review assigned complaints instead.',
+              style: theme.textTheme.bodyMedium,
+            ),
+          ),
+        ),
+      );
+    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),

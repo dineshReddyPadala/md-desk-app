@@ -94,6 +94,8 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final role = context.watch<AuthProvider>().user?['role'] as String?;
+    final isEmployee = role == 'EMPLOYEE';
 
     return Scaffold(
       body: CustomScrollView(
@@ -105,12 +107,14 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'My Complaints',
+                    isEmployee ? 'Assigned Complaints' : 'My Complaints',
                     style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'View your complaints and raise a new one.',
+                    isEmployee
+                        ? 'View complaints assigned to your projects.'
+                        : 'View your complaints and raise a new one.',
                     style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
                   ),
                 ],
@@ -209,12 +213,14 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
                         'No complaints yet.',
                         style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)),
                       ),
-                      const SizedBox(height: 16),
-                      FilledButton.icon(
-                        onPressed: () => context.go('/raise-complaint'),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Raise a complaint'),
-                      ),
+                      if (!isEmployee) ...[
+                        const SizedBox(height: 16),
+                        FilledButton.icon(
+                          onPressed: () => context.go('/raise-complaint'),
+                          icon: const Icon(Icons.add),
+                          label: const Text('Raise a complaint'),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -267,11 +273,13 @@ class _MyComplaintsScreenState extends State<MyComplaintsScreen> {
             ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.go('/raise-complaint'),
-        icon: const Icon(Icons.add),
-        label: const Text('New complaint'),
-      ),
+      floatingActionButton: isEmployee
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: () => context.go('/raise-complaint'),
+              icon: const Icon(Icons.add),
+              label: const Text('New complaint'),
+            ),
     );
   }
 }
